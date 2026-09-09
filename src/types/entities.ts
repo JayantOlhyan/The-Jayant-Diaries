@@ -46,6 +46,36 @@ export interface StoryWithDetails extends StoryRow {
   media?: MediaRow[];
 }
 
+export interface CinematicDay {
+  id: string;
+  day_number: number;
+  date: string | null;
+  title: string | null;
+  description: string | null;
+  journal: string | null;
+  places: PlaceRow[];
+  memories: MemoryRow[];
+  photos: MediaRow[];
+  videos: MediaRow[];
+  instagram: MediaRow[];
+}
+
+export interface CinematicJourney {
+  trip: TripRow;
+  coverMedia: MediaRow | null;
+  statistics: {
+    daysCount: number;
+    placesCount: number;
+    memoriesCount: number;
+    photosCount: number;
+    videosCount: number;
+  };
+  days: CinematicDay[];
+  closingMedia: MediaRow | null;
+  nextTrip: { slug: string; title: string } | null;
+  previousTrip: { slug: string; title: string } | null;
+}
+
 export interface TravelStats {
   trips_count: number;
   places_count: number;

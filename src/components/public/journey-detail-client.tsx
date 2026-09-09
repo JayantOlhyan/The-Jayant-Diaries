@@ -10,6 +10,7 @@ import {
   Film,
   Compass,
   ArrowLeft,
+  ArrowRight,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
@@ -101,38 +102,49 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
               'High passes, ancient monasteries, endless skies and a land that humbles you. A 7-day expedition into Ladakh.'}
           </p>
 
-          {/* Facts Row (7 Days, 5 Places, 28 Memories, 42 Photos, 6 Videos) */}
-          <div className="pt-4 flex flex-wrap items-center gap-6 sm:gap-10 border-t border-white/10 text-xs font-mono text-neutral-400">
-            <div>
-              <span className="block text-base font-bold text-white">
-                {days.length || 7}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider">Days</span>
+          {/* Facts Row & Cinematic Journey CTA */}
+          <div className="pt-4 flex flex-wrap items-center justify-between gap-6 border-t border-white/10 text-xs font-mono text-neutral-400">
+            <div className="flex flex-wrap items-center gap-6 sm:gap-10">
+              <div>
+                <span className="block text-base font-bold text-white">
+                  {days.length || 7}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider">Days</span>
+              </div>
+              <div>
+                <span className="block text-base font-bold text-white">
+                  {places.length || 5}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider">Places</span>
+              </div>
+              <div>
+                <span className="block text-base font-bold text-white">
+                  {trip.memories?.length || 28}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider">Memories</span>
+              </div>
+              <div>
+                <span className="block text-base font-bold text-white">
+                  {photos.length || 42}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider">Photos</span>
+              </div>
+              <div>
+                <span className="block text-base font-bold text-white">
+                  {videos.length || 6}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider">Videos</span>
+              </div>
             </div>
-            <div>
-              <span className="block text-base font-bold text-white">
-                {places.length || 5}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider">Places</span>
-            </div>
-            <div>
-              <span className="block text-base font-bold text-white">
-                {trip.memories?.length || 28}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider">Memories</span>
-            </div>
-            <div>
-              <span className="block text-base font-bold text-white">
-                {photos.length || 42}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider">Photos</span>
-            </div>
-            <div>
-              <span className="block text-base font-bold text-white">
-                {videos.length || 6}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider">Videos</span>
-            </div>
+
+            <Link
+              href={`/journeys/${trip.slug}/cinematic`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400/50 text-[11px] font-mono uppercase tracking-[0.2em] transition-all group shadow-sm hover:shadow-amber-500/10"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>Experience the Journey</span>
+              <ArrowRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
         </div>
       </div>

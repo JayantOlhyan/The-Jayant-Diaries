@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from '@/lib/db/client';
 import { Database } from '@/types/database';
-import { TripWithDetails, TripRow } from '@/types/entities';
+import { TripWithDetails, TripRow, CinematicJourney, CinematicDay, PlaceRow } from '@/types/entities';
 import { SEED_TRIPS, SEED_MEDIA } from './seed-data';
 import { DayRepository } from './day-repository';
 import { PlaceRepository } from './place-repository';
@@ -60,6 +60,124 @@ export class TripRepository {
     } catch {
       return inMemoryTrips.find((t) => t.slug === slug && t.visibility === 'PUBLIC' && t.status === 'PUBLISHED') || null;
     }
+  }
+
+  /**
+   * Retrieves a cinematic journey with complete chronological day chapters,
+   * places, memories, photography, films, and statistics.
+   * Strictly enforces visibility = 'PUBLIC' and status = 'PUBLISHED'.
+   */
+  static async getCinematicJourneyBySlug(slug: string): Promise<CinematicJourney | null> {
+    const trip = await this.getPublicTripBySlug(slug);
+    if (!trip) return null;
+
+    // Fetch related days, places, memories, and media across the public repository layer
+    const [allDays, allPlaces, allPublicMemories, allPublicMedia, allPublicTrips] = await Promise.all([
+      DayRepository.getDaysByTripId(trip.id),
+      PlaceRepository.getAllPlaces(),
+      MemoryRepository.getPublicMemories(),
+      MediaRepository.getPublicMedia(200),
+      this.getPublicTrips(),
+    ]);
+
+    // Order days chronologically
+    const sortedDays = [...allDays].sort((a, b) => a.day_number - b.day_number);
+
+    // Trip-specific public memories and media
+    const tripMemories = allPublicMemories.filter((m) => m.trip_id === trip.id);
+    const tripMedia = allPublicMedia.filter((m) => m.trip_id === trip.id);
+
+    const placesMap = new Map(allPlaces.map((p) => [p.id, p]));
+
+    // Map days to CinematicDay
+    const cinematicDays: CinematicDay[] = sortedDays.map((day) => {
+      const dayMemories = tripMemories.filter((m) => m.day_id === day.id);
+      const dayMedia = tripMedia.filter((m) => m.day_id === day.id);
+
+      // Collect places for this day from memories or media
+      const dayPlaceIds = new Set<string>();
+      dayMemories.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
+      dayMedia.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
+
+      let dayPlaces = Array.from(dayPlaceIds)
+        .map((id) => placesMap.get(id))
+        .filter((p): p is PlaceRow => Boolean(p));
+
+      // Contextual fallback matching by day title or description if place_id was not explicitly linked
+      if (dayPlaces.length === 0) {
+        dayPlaces = allPlaces.filter(
+          (p) =>
+            day.title?.toLowerCase().includes(p.name.toLowerCase()) ||
+            day.description?.toLowerCase().includes(p.name.toLowerCase())
+        );
+      }
+
+      const photos = dayMedia.filter((m) => m.type === 'PHOTO' && !m.filename.startsWith('instagram-'));
+      const videos = dayMedia.filter((m) => m.type === 'VIDEO' || m.storage_path?.startsWith('youtube/'));
+      const instagram = dayMedia.filter((m) => m.type === 'REEL' || m.filename.startsWith('instagram-'));
+
+      return {
+        id: day.id,
+        day_number: day.day_number,
+        date: day.date,
+        title: day.title,
+        description: day.description,
+        journal: day.journal,
+        places: dayPlaces,
+        memories: dayMemories,
+        photos,
+        videos,
+        instagram,
+      };
+    });
+
+    // Unique visited places across the trip
+    const allTripPlaceIds = new Set<string>();
+    cinematicDays.forEach((d) => d.places.forEach((p) => allTripPlaceIds.add(p.id)));
+    tripMemories.forEach((m) => m.place_id && allTripPlaceIds.add(m.place_id));
+    tripMedia.forEach((m) => m.place_id && allTripPlaceIds.add(m.place_id));
+    const uniquePlacesCount = Math.max(allTripPlaceIds.size, 1);
+
+    const tripPhotos = tripMedia.filter((m) => m.type === 'PHOTO' && !m.filename.startsWith('instagram-'));
+    const tripVideos = tripMedia.filter((m) => m.type === 'VIDEO' || m.storage_path?.startsWith('youtube/'));
+
+    const coverMedia =
+      (trip.cover_media_id ? await MediaRepository.getMediaById(trip.cover_media_id) : null) ||
+      tripPhotos[0] ||
+      SEED_MEDIA[0];
+
+    // Closing landscape media
+    const closingMedia =
+      tripPhotos.find((p) => p.caption?.toLowerCase().includes('reflection') || p.caption?.toLowerCase().includes('sunset')) ||
+      tripPhotos[tripPhotos.length - 1] ||
+      coverMedia;
+
+    // Next / Previous trip navigation
+    const tripIdx = allPublicTrips.findIndex((t) => t.id === trip.id);
+    const nextTrip =
+      tripIdx !== -1 && tripIdx < allPublicTrips.length - 1
+        ? { slug: allPublicTrips[tripIdx + 1].slug, title: allPublicTrips[tripIdx + 1].title }
+        : null;
+    const previousTrip =
+      tripIdx > 0
+        ? { slug: allPublicTrips[tripIdx - 1].slug, title: allPublicTrips[tripIdx - 1].title }
+        : null;
+
+    return {
+      trip,
+      coverMedia,
+      statistics: {
+        daysCount: sortedDays.length,
+        placesCount: uniquePlacesCount,
+        memoriesCount: tripMemories.length,
+        photosCount: tripPhotos.length,
+        videosCount: tripVideos.length,
+      },
+      days: cinematicDays,
+      closingMedia,
+      nextTrip,
+      previousTrip,
+    };
   }
 
   /**

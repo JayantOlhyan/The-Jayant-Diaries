@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 11 13 14; /* #0B0D0E */
+    --foreground: 243 244 246; /* #F3F4F6 */
+    --surface: 18 21 24; /* #121518 */
+    --surface-elevated: 24 28 34; /* #181C22 */
+    --border: 35 40 48; /* #232830 */
+    --accent: 217 119 6; /* #D97706 */
+    --accent-hover: 180 83 9; /* #B45309 */
+    --muted: 156 163 175; /* #9CA3AF */
+  }
+
+  body {
+    background-color: #0B0D0E;
+    color: #F3F4F6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom subtle scrollbar for horizontal rails */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0D0E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232830;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #384150;
+}

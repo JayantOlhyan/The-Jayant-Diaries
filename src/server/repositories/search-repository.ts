@@ -55,6 +55,9 @@ export class SearchRepository {
       MediaRepository.getPublicMedia(),
     ]);
 
+    const placesMap = new Map(allPlaces.map((p) => [p.id, p]));
+    const tripsMap = new Map(publicTrips.map((t) => [t.id, t]));
+
     // 1. Filter and score Journeys
     const journeys = publicTrips
       .filter((t) => {
@@ -90,13 +93,18 @@ export class SearchRepository {
       })
       .slice(0, limit);
 
-    // 3. Filter and score Stories / Memories
+    // 3. Filter and score Stories / Memories (with relational context)
     const stories = publicMemories
       .filter((m) => {
+        const place = m.place_id ? placesMap.get(m.place_id) : null;
+        const trip = m.trip_id ? tripsMap.get(m.trip_id) : null;
         return (
           m.title.toLowerCase().includes(q) ||
           (m.description && m.description.toLowerCase().includes(q)) ||
-          (m.journal && m.journal.toLowerCase().includes(q))
+          (m.journal && m.journal.toLowerCase().includes(q)) ||
+          (place && place.name.toLowerCase().includes(q)) ||
+          (place?.state && place.state.toLowerCase().includes(q)) ||
+          (trip && trip.title.toLowerCase().includes(q))
         );
       })
       .sort((a, b) => {
@@ -106,12 +114,17 @@ export class SearchRepository {
       })
       .slice(0, limit);
 
-    // 4. Filter and partition Media (Photography vs Films)
+    // 4. Filter and partition Media (with relational context)
     const matchingMedia = publicMedia.filter((m) => {
+      const place = m.place_id ? placesMap.get(m.place_id) : null;
+      const trip = m.trip_id ? tripsMap.get(m.trip_id) : null;
       return (
         (m.caption && m.caption.toLowerCase().includes(q)) ||
         (m.alt_text && m.alt_text.toLowerCase().includes(q)) ||
-        m.filename.toLowerCase().includes(q)
+        m.filename.toLowerCase().includes(q) ||
+        (place && place.name.toLowerCase().includes(q)) ||
+        (place?.state && place.state.toLowerCase().includes(q)) ||
+        (trip && trip.title.toLowerCase().includes(q))
       );
     });
 

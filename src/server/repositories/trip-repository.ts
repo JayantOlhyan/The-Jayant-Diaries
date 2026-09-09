@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/lib/db/client';
 import { Database } from '@/types/database';
 import { TripWithDetails, TripRow, CinematicJourney, CinematicDay, PlaceRow } from '@/types/entities';
-import { SEED_TRIPS, SEED_MEDIA } from './seed-data';
+import { SEED_TRIPS } from './seed-data';
 import { DayRepository } from './day-repository';
 import { PlaceRepository } from './place-repository';
 import { MemoryRepository } from './memory-repository';
@@ -13,6 +13,13 @@ export type TripUpdate = Database['public']['Tables']['trips']['Update'];
 let inMemoryTrips = [...SEED_TRIPS];
 
 export class TripRepository {
+  /**
+   * Reset in-memory store to initial seed data (useful for test isolation).
+   */
+  static _resetInMemoryTrips(): void {
+    inMemoryTrips = [...SEED_TRIPS];
+  }
+
   /**
    * Retrieves all published public trips for the public frontend.
    */
@@ -72,9 +79,9 @@ export class TripRepository {
     if (!trip) return null;
 
     // Fetch related days, places, memories, and media across the public repository layer
-    const [allDays, allPlaces, allPublicMemories, allPublicMedia, allPublicTrips] = await Promise.all([
+    const [allDays, publicPlaces, allPublicMemories, allPublicMedia, allPublicTrips] = await Promise.all([
       DayRepository.getDaysByTripId(trip.id),
-      PlaceRepository.getAllPlaces(),
+      PlaceRepository.getPublicPlaces(),
       MemoryRepository.getPublicMemories(),
       MediaRepository.getPublicMedia(200),
       this.getPublicTrips(),
@@ -87,30 +94,37 @@ export class TripRepository {
     const tripMemories = allPublicMemories.filter((m) => m.trip_id === trip.id);
     const tripMedia = allPublicMedia.filter((m) => m.trip_id === trip.id);
 
-    const placesMap = new Map(allPlaces.map((p) => [p.id, p]));
+    const placesMap = new Map(publicPlaces.map((p) => [p.id, p]));
 
     // Map days to CinematicDay
     const cinematicDays: CinematicDay[] = sortedDays.map((day) => {
       const dayMemories = tripMemories.filter((m) => m.day_id === day.id);
       const dayMedia = tripMedia.filter((m) => m.day_id === day.id);
 
-      // Collect places for this day from memories or media
+      // Collect places for this day from explicit relationships only:
+      // Level 1: explicit day relationship if present in schema
+      // Level 2: explicit public memory relationship (m.place_id)
+      // Level 3: explicit public media relationship (m.place_id)
       const dayPlaceIds = new Set<string>();
+      if ('places' in day && Array.isArray((day as any).places)) {
+        (day as any).places.forEach((p: any) => p?.id && dayPlaceIds.add(p.id));
+      }
+      if ('place_id' in day && (day as any).place_id) {
+        dayPlaceIds.add((day as any).place_id);
+      }
       dayMemories.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
       dayMedia.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
 
-      let dayPlaces = Array.from(dayPlaceIds)
+      const dayPlaces = Array.from(dayPlaceIds)
         .map((id) => placesMap.get(id))
-        .filter((p): p is PlaceRow => Boolean(p));
+        .filter((p): p is PlaceRow => {
+          if (!p) return false;
+          if ('visibility' in p && (p as any).visibility !== 'PUBLIC') return false;
+          if ('status' in p && (p as any).status !== 'PUBLISHED') return false;
+          return true;
+        });
 
-      // Contextual fallback matching by day title or description if place_id was not explicitly linked
-      if (dayPlaces.length === 0) {
-        dayPlaces = allPlaces.filter(
-          (p) =>
-            day.title?.toLowerCase().includes(p.name.toLowerCase()) ||
-            day.description?.toLowerCase().includes(p.name.toLowerCase())
-        );
-      }
+      // Level 4: Do not infer. If no relationship exists: dayPlaces = []
 
       const photos = dayMedia.filter((m) => m.type === 'PHOTO' && !m.filename.startsWith('instagram-'));
       const videos = dayMedia.filter((m) => m.type === 'VIDEO' || m.storage_path?.startsWith('youtube/'));
@@ -131,12 +145,26 @@ export class TripRepository {
       };
     });
 
-    // Unique visited places across the trip
+    // Unique visited places across the trip strictly linked via relationships
     const allTripPlaceIds = new Set<string>();
     cinematicDays.forEach((d) => d.places.forEach((p) => allTripPlaceIds.add(p.id)));
-    tripMemories.forEach((m) => m.place_id && allTripPlaceIds.add(m.place_id));
-    tripMedia.forEach((m) => m.place_id && allTripPlaceIds.add(m.place_id));
-    const uniquePlacesCount = Math.max(allTripPlaceIds.size, 1);
+    tripMemories.forEach((m) => {
+      if (m.place_id && placesMap.has(m.place_id)) {
+        const p = placesMap.get(m.place_id);
+        if (p && (!('visibility' in p) || (p as any).visibility === 'PUBLIC') && (!('status' in p) || (p as any).status === 'PUBLISHED')) {
+          allTripPlaceIds.add(m.place_id);
+        }
+      }
+    });
+    tripMedia.forEach((m) => {
+      if (m.place_id && placesMap.has(m.place_id)) {
+        const p = placesMap.get(m.place_id);
+        if (p && (!('visibility' in p) || (p as any).visibility === 'PUBLIC') && (!('status' in p) || (p as any).status === 'PUBLISHED')) {
+          allTripPlaceIds.add(m.place_id);
+        }
+      }
+    });
+    const placesCount = allTripPlaceIds.size;
 
     const tripPhotos = tripMedia.filter((m) => m.type === 'PHOTO' && !m.filename.startsWith('instagram-'));
     const tripVideos = tripMedia.filter((m) => m.type === 'VIDEO' || m.storage_path?.startsWith('youtube/'));
@@ -144,13 +172,14 @@ export class TripRepository {
     const coverMedia =
       (trip.cover_media_id ? await MediaRepository.getMediaById(trip.cover_media_id) : null) ||
       tripPhotos[0] ||
-      SEED_MEDIA[0];
+      null;
 
     // Closing landscape media
     const closingMedia =
       tripPhotos.find((p) => p.caption?.toLowerCase().includes('reflection') || p.caption?.toLowerCase().includes('sunset')) ||
       tripPhotos[tripPhotos.length - 1] ||
-      coverMedia;
+      coverMedia ||
+      null;
 
     // Next / Previous trip navigation
     const tripIdx = allPublicTrips.findIndex((t) => t.id === trip.id);
@@ -168,7 +197,7 @@ export class TripRepository {
       coverMedia,
       statistics: {
         daysCount: sortedDays.length,
-        placesCount: uniquePlacesCount,
+        placesCount,
         memoriesCount: tripMemories.length,
         photosCount: tripPhotos.length,
         videosCount: tripVideos.length,
@@ -245,18 +274,33 @@ export class TripRepository {
     const media = await MediaRepository.getMediaByTripId(id);
 
     // Load cover media
-    const coverMedia = (trip.cover_media_id ? await MediaRepository.getMediaById(trip.cover_media_id) : null) || media[0] || SEED_MEDIA[0];
+    const coverMedia = (trip.cover_media_id ? await MediaRepository.getMediaById(trip.cover_media_id) : null) || media[0] || null;
 
     return {
       ...trip,
       cover_media: coverMedia,
-      days: days.map((day) => ({
-        ...day,
-        places: places.filter((p) => p.name === 'Leh' || p.name === 'Magnetic Hill' || p.name === 'Nubra Valley'),
-        memories: memories.filter((m) => m.day_id === day.id),
-        media: media.filter((m) => m.day_id === day.id),
-      })),
-      places,
+      days: days.map((day) => {
+        const dayMemories = memories.filter((m) => m.day_id === day.id);
+        const dayMedia = media.filter((m) => m.day_id === day.id);
+        const dayPlaceIds = new Set<string>();
+        dayMemories.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
+        dayMedia.forEach((m) => m.place_id && dayPlaceIds.add(m.place_id));
+        const dayPlaces = Array.from(dayPlaceIds)
+          .map((pId) => places.find((p) => p.id === pId))
+          .filter((p): p is PlaceRow => Boolean(p));
+        return {
+          ...day,
+          places: dayPlaces,
+          memories: dayMemories,
+          media: dayMedia,
+        };
+      }),
+      places: places.filter((p) => {
+        const tripPlaceIds = new Set<string>();
+        memories.forEach((m) => m.place_id && tripPlaceIds.add(m.place_id));
+        media.forEach((m) => m.place_id && tripPlaceIds.add(m.place_id));
+        return tripPlaceIds.has(p.id);
+      }),
       memories,
       media,
       media_count: media.length,

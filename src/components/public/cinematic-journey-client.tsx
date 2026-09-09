@@ -79,19 +79,21 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
     return () => observer.disconnect();
   }, []);
 
-  const fallbackCover =
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80';
   const coverUrl = coverMedia
     ? getNormalizedImageUrl(coverMedia.storage_url || coverMedia.thumbnail_url || '')
-    : fallbackCover;
+    : null;
   const closingUrl = closingMedia
     ? getNormalizedImageUrl(closingMedia.storage_url || closingMedia.thumbnail_url || '')
-    : coverUrl;
+    : null;
 
   const dateSpan =
     trip.start_date && trip.end_date
       ? `${formatDate(trip.start_date)} — ${formatDate(trip.end_date)}`
-      : 'June 2026';
+      : trip.start_date
+        ? formatDate(trip.start_date)
+        : trip.end_date
+          ? formatDate(trip.end_date)
+          : null;
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -178,13 +180,15 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
       >
         {/* Full-bleed ambient cover image */}
         <div className="absolute inset-0 z-0">
-          <Image
-            src={coverUrl}
-            alt={coverMedia ? getImageAlt(coverMedia) : trip.title}
-            fill
-            priority
-            className="object-cover object-center scale-100"
-          />
+          {coverUrl && coverMedia && (
+            <Image
+              src={coverUrl}
+              alt={getImageAlt(coverMedia)}
+              fill
+              priority
+              className="object-cover object-center scale-100"
+            />
+          )}
           {/* Cinematic Vignette Overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#070809] via-[#070809]/60 to-[#070809]/80" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#070809]/90 via-transparent to-[#070809]" />
@@ -205,19 +209,24 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
             {trip.title}
           </h1>
 
-          <p className="font-serif text-xl sm:text-2xl md:text-3xl text-neutral-300 italic max-w-3xl mx-auto leading-relaxed">
-            &ldquo;{trip.description?.split('.')[0] || 'A sacred expedition into the high Himalayas.'}&rdquo;
-          </p>
+          {trip.description && (
+            <p className="font-serif text-xl sm:text-2xl md:text-3xl text-neutral-300 italic max-w-3xl mx-auto leading-relaxed">
+              &ldquo;{trip.description.split('.')[0]}&rdquo;
+            </p>
+          )}
 
-          <div className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/80">
-            <Calendar className="w-3.5 h-3.5 text-amber-400" />
-            <span>{dateSpan}</span>
-          </div>
+          {dateSpan && (
+            <div className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/80">
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>{dateSpan}</span>
+            </div>
+          )}
 
-          <p className="text-sm sm:text-base text-neutral-400 max-w-2xl mx-auto font-sans leading-relaxed pt-2">
-            {trip.description ||
-              'High passes, ancient monasteries, endless skies and a land that humbles you. Experience the journey chronologically, day by day.'}
-          </p>
+          {trip.description && (
+            <p className="text-sm sm:text-base text-neutral-400 max-w-2xl mx-auto font-sans leading-relaxed pt-2">
+              {trip.description}
+            </p>
+          )}
 
           {/* Restrained Journey Statistics Bar */}
           <div className="pt-10 max-w-2xl mx-auto grid grid-cols-5 gap-3 border-y border-white/10 py-4 font-mono text-center">
@@ -348,9 +357,10 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {day.memories.map((mem) => {
-                      const placeName =
-                        day.places.find((p) => p.id === mem.place_id)?.name ||
-                        (day.places[0] ? `${day.places[0].name}, ${day.places[0].country || 'Ladakh'}` : null);
+                      const memoryPlace = mem.place_id ? day.places.find((p) => p.id === mem.place_id) : null;
+                      const placeName = memoryPlace
+                        ? `${memoryPlace.name}${memoryPlace.city ? `, ${memoryPlace.city}` : memoryPlace.state ? `, ${memoryPlace.state}` : ''}`
+                        : null;
                       return (
                         <div
                           key={mem.id}
@@ -435,7 +445,7 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
                       <div key={vid.id} className="rounded-xl overflow-hidden border border-white/10">
                         <YouTubePreview
                           media={vid}
-                          title={vid.caption || `Ladakh Expedition — Day 0${day.day_number}`}
+                          title={vid.caption || `${trip.title} — Day 0${day.day_number}`}
                           caption={vid.caption || undefined}
                           autoplay={false}
                         />
@@ -518,12 +528,14 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
         className="relative border-t border-white/[0.08] min-h-[80vh] flex flex-col justify-between py-24 px-6 md:px-12 overflow-hidden bg-neutral-950"
       >
         <div className="absolute inset-0 z-0">
-          <Image
-            src={closingUrl}
-            alt="Closing horizon"
-            fill
-            className="object-cover object-center scale-100 opacity-30"
-          />
+          {closingUrl && (
+            <Image
+              src={closingUrl}
+              alt="Closing horizon"
+              fill
+              className="object-cover object-center scale-100 opacity-30"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#070809] via-[#070809]/80 to-transparent" />
         </div>
 
@@ -545,7 +557,7 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
               The Jayant Diaries &bull; Expedition Archive
             </p>
             <p className="text-xs font-mono text-neutral-500">
-              Recorded in the high Himalaya &bull; {statistics.daysCount} Days &bull; {statistics.placesCount} Waypoints &bull; {statistics.photosCount} Photographs
+              {statistics.daysCount} Days &bull; {statistics.placesCount} Waypoints &bull; {statistics.photosCount} Photographs
             </p>
           </div>
 

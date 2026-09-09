@@ -42,12 +42,16 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
 
   const coverUrl = trip.cover_media
     ? getNormalizedImageUrl(trip.cover_media.storage_url || trip.cover_media.thumbnail_url || '')
-    : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80';
+    : null;
 
   const dateSpan =
     trip.start_date && trip.end_date
       ? `${formatDate(trip.start_date)} — ${formatDate(trip.end_date)}`
-      : 'June 2026';
+      : trip.start_date
+        ? formatDate(trip.start_date)
+        : trip.end_date
+          ? formatDate(trip.end_date)
+          : null;
 
   return (
     <div className="space-y-12 pb-24">
@@ -55,13 +59,15 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
       <div className="relative w-full h-[65vh] min-h-[480px] max-h-[750px] bg-neutral-950 flex flex-col justify-between overflow-hidden">
         {/* Cover Photo */}
         <div className="absolute inset-0">
-          <Image
-            src={coverUrl}
-            alt={trip.cover_media ? getImageAlt(trip.cover_media) : trip.title}
-            fill
-            priority
-            className="object-cover object-center scale-[1.02]"
-          />
+          {coverUrl && (
+            <Image
+              src={coverUrl}
+              alt={trip.cover_media ? getImageAlt(trip.cover_media) : trip.title}
+              fill
+              priority
+              className="object-cover object-center scale-[1.02]"
+            />
+          )}
           {/* Subtle gradient vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0D0E] via-[#0B0D0E]/50 to-black/30" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0B0D0E]/80 via-transparent to-transparent" />
@@ -87,51 +93,56 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
             <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-tight">
               {trip.title}
             </h1>
-            <p className="font-serif text-xl sm:text-2xl text-neutral-200 italic">
-              {trip.description?.split('.')[0] || 'The Frozen Frontier'}
+            {trip.description && (
+              <p className="font-serif text-xl sm:text-2xl text-neutral-200 italic">
+                {trip.description.split('.')[0]}
+              </p>
+            )}
+          </div>
+
+          {dateSpan && (
+            <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>{dateSpan}</span>
+            </div>
+          )}
+
+          {trip.description && (
+            <p className="text-sm text-neutral-300 max-w-2xl leading-relaxed font-sans pt-1">
+              {trip.description}
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
-            <Calendar className="w-3.5 h-3.5 text-amber-400" />
-            <span>{dateSpan}</span>
-          </div>
-
-          <p className="text-sm text-neutral-300 max-w-2xl leading-relaxed font-sans pt-1">
-            {trip.description ||
-              'High passes, ancient monasteries, endless skies and a land that humbles you. A 7-day expedition into Ladakh.'}
-          </p>
+          )}
 
           {/* Facts Row & Cinematic Journey CTA */}
           <div className="pt-4 flex flex-wrap items-center justify-between gap-6 border-t border-white/10 text-xs font-mono text-neutral-400">
             <div className="flex flex-wrap items-center gap-6 sm:gap-10">
               <div>
                 <span className="block text-base font-bold text-white">
-                  {days.length || 7}
+                  {days.length}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider">Days</span>
               </div>
               <div>
                 <span className="block text-base font-bold text-white">
-                  {places.length || 5}
+                  {places.length}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider">Places</span>
               </div>
               <div>
                 <span className="block text-base font-bold text-white">
-                  {trip.memories?.length || 28}
+                  {trip.memories?.length ?? 0}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider">Memories</span>
               </div>
               <div>
                 <span className="block text-base font-bold text-white">
-                  {photos.length || 42}
+                  {photos.length}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider">Photos</span>
               </div>
               <div>
                 <span className="block text-base font-bold text-white">
-                  {videos.length || 6}
+                  {videos.length}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider">Videos</span>
               </div>
@@ -188,7 +199,7 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
                 Expedition Synopsis
               </h2>
               <p className="text-sm text-neutral-300 leading-relaxed font-sans max-w-3xl">
-                {trip.description} This expedition journeys through the high cold desert of Ladakh, crossing switchback passes higher than 17,000 feet, touching ancient Tibetan Buddhist settlements, and camping beside the turquoise reflections of the high-altitude Pangong Tso.
+                {trip.description || 'No synopsis recorded for this journey.'}
               </p>
             </div>
 

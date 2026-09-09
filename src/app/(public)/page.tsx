@@ -185,10 +185,11 @@ export default async function HomePage() {
                 )}
               </div>
 
-              <p className="text-sm text-neutral-300 leading-relaxed font-sans">
-                {featuredTrip.description ||
-                  'High passes, endless skies, and a land that humbles you. A personal chronicle across the frozen frontier.'}
-              </p>
+              {featuredTrip.description && (
+                <p className="text-sm text-neutral-300 leading-relaxed font-sans">
+                  {featuredTrip.description}
+                </p>
+              )}
 
               <div className="pt-2">
                 <Link

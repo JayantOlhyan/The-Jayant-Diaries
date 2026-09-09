@@ -10,6 +10,13 @@ let inMemoryMemories = [...SEED_MEMORIES];
 
 export class MemoryRepository {
   /**
+   * Reset in-memory store to initial seed data (useful for test isolation).
+   */
+  static _resetInMemoryMemories(): void {
+    inMemoryMemories = [...SEED_MEMORIES];
+  }
+
+  /**
    * Retrieves all public memories for the public archive.
    */
   static async getPublicMemories(): Promise<MemoryRow[]> {

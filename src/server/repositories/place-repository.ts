@@ -10,6 +10,26 @@ let inMemoryPlaces = [...SEED_PLACES];
 
 export class PlaceRepository {
   /**
+   * Reset in-memory store to initial seed data (useful for test isolation).
+   */
+  static _resetInMemoryPlaces(): void {
+    inMemoryPlaces = [...SEED_PLACES];
+  }
+
+  /**
+   * Retrieves all public places for public discovery and cinematic journeys.
+   * If a place has visibility or status attributes, filters out non-public/unpublished places.
+   */
+  static async getPublicPlaces(): Promise<PlaceRow[]> {
+    const places = await this.getAllPlaces();
+    return places.filter((p: any) => {
+      if (p.visibility && p.visibility !== 'PUBLIC') return false;
+      if (p.status && p.status !== 'PUBLISHED') return false;
+      return true;
+    });
+  }
+
+  /**
    * Retrieves all places for public discovery and Studio directory.
    */
   static async getAllPlaces(): Promise<PlaceRow[]> {

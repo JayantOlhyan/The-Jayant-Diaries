@@ -10,6 +10,13 @@ let inMemoryDays = [...SEED_DAYS];
 
 export class DayRepository {
   /**
+   * Reset in-memory store to initial seed data (useful for test isolation).
+   */
+  static _resetInMemoryDays(): void {
+    inMemoryDays = [...SEED_DAYS];
+  }
+
+  /**
    * Retrieves all days belonging to a specific trip, ordered chronologically.
    */
   static async getDaysByTripId(tripId: string): Promise<DayRow[]> {

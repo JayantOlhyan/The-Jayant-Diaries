@@ -31,7 +31,7 @@ export function JourneysClient({ initialTrips }: JourneysClientProps) {
   const liveJourneyCards: JourneyCardItem[] = initialTrips.map((t) => ({
     id: t.id,
     title: t.title,
-    subtitle: t.description?.split('.')[0] || 'The Frozen Frontier',
+    subtitle: t.description?.split('.')[0] || '',
     category: 'Mountains',
     slug: t.slug,
     dateSpan: t.start_date && t.end_date ? `${formatDate(t.start_date)} — ${formatDate(t.end_date)}` : undefined,
@@ -149,9 +149,11 @@ export function JourneysClient({ initialTrips }: JourneysClientProps) {
                   <h3 className="font-serif text-xl font-bold text-white group-hover:text-amber-300 transition-colors">
                     {journey.title}
                   </h3>
-                  <p className="text-xs text-neutral-400 font-sans">
-                    {journey.subtitle}
-                  </p>
+                  {journey.subtitle && (
+                    <p className="text-xs text-neutral-400 font-sans">
+                      {journey.subtitle}
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-neutral-400">

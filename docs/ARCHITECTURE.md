@@ -1,0 +1,169 @@
+# ARCHITECTURE BLUEPRINT — THE JAYANT DIARIES
+
+## 1. System Overview
+
+**The Jayant Diaries** is architected as a **modular monolith** running on Next.js 15 App Router, backed by PostgreSQL and S3-compatible Object Storage (Supabase), deployed to Vercel.
+
+The design prioritizes:
+1. **Long-term archive preservation**: Canonical relational models and content portability.
+2. **Single-operator maintainability**: Zero microservice overhead, unified TypeScript codebase.
+3. **Cinematic presentation**: Ultra-fast SSR/ISR public delivery with progressive media hydration.
+4. **Absolute data ownership**: Decoupled from third-party social platforms (Instagram).
+
+```
+                      +-----------------------------+
+                      |       Public Visitor        |
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +-----------------------------+
+                      |   Next.js App Router (SSR)  |
+                      |   /(public)/* (Dark Cinema) |
+                      +--------------+--------------+
+                                     |
+        +----------------------------+----------------------------+
+        |                                                         |
+        v                                                         v
++-------------------------------+                         +-------------------------------+
+|     Studio Operator (Jayant)  |                         |    API / Route Handlers       |
+|     /studio/* (Studio UI)     |                         |    /api/*                     |
++---------------+---------------+                         +---------------+---------------+
+                |                                                         |
+                +----------------------------+----------------------------+
+                                             |
+                                             v
+                      +-------------------------------------------+
+                      |         Application Service Layer         |
+                      |         src/server/services/*             |
+                      +----------------------+--------------------+
+                                             |
+                                             v
+                      +-------------------------------------------+
+                      |         Repository Data Access            |
+                      |         src/server/repositories/*         |
+                      +----------------------+--------------------+
+                                             |
+                   +-------------------------+-------------------------+
+                   |                                                   |
+                   v                                                   v
++------------------------------------+               +------------------------------------+
+|        PostgreSQL Database         |               |          Supabase Storage          |
+|    - Normal Relational Schema      |               |    - Deterministic Media Paths     |
+|    - Row Level Security (RLS)      |               |    - Responsive Image CDN          |
+|    - Full-Text Search (tsvector)   |               |    - Authenticated Uploads         |
++------------------------------------+               +------------------------------------+
+```
+
+---
+
+## 2. Why Modular Monolith?
+
+We deliberately reject microservices, standalone Node/FastAPI backends, and external queue orchestrators for the following fundamental architectural reasons:
+
+- **Single Developer Footprint**: A personal archive must be maintainable by one developer without DevOps friction or polyglot mental overhead.
+- **Transactional Relational Integrity**: Operations such as assigning 100 media assets to a day, trip, and places benefit directly from ACID transactions in PostgreSQL.
+- **Zero Serialization Latency**: Next.js Server Components query data repositories directly on the server without internal HTTP network hops.
+- **Cost Efficiency & Longevity**: A serverless Next.js deployment connected to managed PostgreSQL and object storage incurs near-zero idle cost and can run unattended for years.
+
+---
+
+## 3. Application Layers & Directory Mapping
+
+The application enforces a strict unidirectional dependency structure:
+
+1. **Presentation Layer (`src/app/`, `src/components/`)**:
+   - `src/app/(public)/*`: Server Components rendering public editorial and cinematic layouts. Zero admin code or private queries allowed.
+   - `src/app/studio/*`: Authenticated Studio dashboards, batch upload drawers, editing forms.
+   - `src/components/ui/*`: Primitive, accessible design-token driven components.
+   - `src/components/public/*`: Cinematic hero sections, horizontal rails, lightbox galleries.
+   - `src/components/studio/*`: Operational tables, batch processors, metadata review grids.
+2. **Domain Features Layer (`src/features/*`)**:
+   - Organizes components, hooks, and types by product domain (`trips`, `days`, `places`, `memories`, `media`, `instagram`, `stories`, `search`).
+3. **Application Service Layer (`src/server/services/*`)**:
+   - Implements business logic: batch media ingestion, metadata extraction orchestration, duplicate detection coordination, trip publishing pipelines.
+4. **Repository Layer (`src/server/repositories/*`)**:
+   - Single point of contact with PostgreSQL. Encapsulates SQL queries and Supabase database clients. Enforces visibility filters.
+5. **Infrastructure & Shared Utilities (`src/lib/`)**:
+   - `lib/db/`: Database clients and connection pooling.
+   - `lib/storage/`: S3/Supabase upload handlers and path generators.
+   - `lib/auth/`: Supabase Auth session verifiers and middleware.
+   - `lib/maps/`: Provider-agnostic map coordinate and marker abstractions.
+   - `lib/validation/`: Zod schemas for all network and database boundaries.
+
+---
+
+## 4. Server vs. Client Boundary Rules
+
+- **Server Components (Default)**:
+  - All data fetching for public pages and initial Studio dashboards occurs in Server Components.
+  - No client JavaScript overhead for reading journeys, places, stories, or metadata.
+- **Client Components (`'use client'`)**:
+  - Reserved strictly for:
+    - User interactivity (interactive map explorer, video playback controls, lightbox gestures).
+    - Batch drag-and-drop file uploaders.
+    - Studio interactive state (filtering, inline editing, modals, drawers).
+- **Server Actions**:
+  - Mutation endpoints (`createTrip`, `updateDay`, `saveJournal`, `batchTagMedia`).
+  - Automatically validated with Zod before database execution.
+  - Revalidate Next.js cache paths (`revalidatePath`) upon successful mutation.
+
+---
+
+## 5. Storage Architecture & Deterministic Paths
+
+Media assets are stored in Supabase Storage with deterministic, UUID-based path conventions to prevent human-naming conflicts or broken relations:
+
+```text
+media/
+└── {mediaId}/
+    ├── original.{ext}      # Canonical unmodified uploaded file
+    ├── large.webp          # 2560px cinematic hero view
+    ├── medium.webp         # 1280px standard editorial view
+    ├── small.webp          # 640px mobile & card rail view
+    └── thumbnail.webp      # 320px studio grid & preview thumbnail
+```
+
+### Media Pipeline Lifecycle
+1. **Direct-to-Storage Upload**: Client requests a signed upload URL via Server Action, uploading large files directly to Supabase Storage without burdening the Next.js serverless process.
+2. **Metadata Extraction**: Client/Server extracts EXIF/IPTC data (timestamp, GPS latitude/longitude, camera model, dimensions).
+3. **Media Record Insertion**: An unorganized `media` record is created in PostgreSQL with status `UNASSIGNED`.
+4. **Review & Attachment**: Jayant reviews suggested grouping in Studio, modifying or confirming trip/day/place/memory associations.
+
+---
+
+## 6. Authentication & Authorization Model
+
+- **Public Visitors**:
+  - No authentication required.
+  - Restricted strictly to `visibility = 'PUBLIC'` and `status = 'PUBLISHED'` records.
+  - Database Row Level Security (RLS) automatically blocks anonymous access to `PRIVATE` or `UNLISTED` records.
+- **Studio Operator (Jayant)**:
+  - Authenticated via Supabase Auth (Email + Secure Password, optional OAuth).
+  - Next.js middleware (`src/middleware.ts`) protects all `/studio/*` routes, redirecting unauthenticated requests to login.
+  - Service Role Key is used strictly in protected server contexts where admin operations (e.g. storage management or migration jobs) are required. It is NEVER exposed to the browser.
+
+---
+
+## 7. Search & Discovery Architecture
+
+- **PostgreSQL Full-Text Search**:
+  - Generated `tsvector` columns with `GIN` indexing across `trips`, `places`, `memories`, `stories`, and `tags`.
+  - Supports prefix matching, geographic filtering, and tag composition in sub-millisecond query times without running an Elasticsearch cluster.
+- **Future Expansion**:
+  - Embeddings (pgvector) can be introduced in Phase 7 for semantic memory queries directly within the same database.
+
+---
+
+## 8. Map Provider Abstraction
+
+- Map visualizers consume an abstract GeoJSON-like interface (`src/lib/maps/types.ts`).
+- Neither Mapbox nor Google Maps is hardcoded into feature components. Switching providers requires changing only the client adapter in `src/lib/maps/`.
+
+---
+
+## 9. Backup & Disaster Recovery Strategy
+
+Because this is a permanent lifetime archive:
+1. **Database**: Nightly automated logical backups via Supabase + point-in-time recovery (PITR). An export script (`npm run archive:export`) dumps canonical JSON schemas and journals.
+2. **Storage**: Supabase Storage buckets mirrored or synced to secondary cold storage (AWS S3 Glacier or Cloudflare R2).
+3. **Code & Configuration**: Source code hosted on GitHub; all schema definitions version-controlled in `supabase/migrations/`.

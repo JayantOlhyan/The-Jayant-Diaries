@@ -238,10 +238,51 @@ Phase 7 introduces the operational ingest pipeline to transform raw travel photo
 
 ---
 
-## 10. Backup & Disaster Recovery Strategy
+## 11. Intelligent Archive Capture & Import Pipeline (Phase 11)
+
+Phase 11 introduces a high-throughput, resilient operational pipeline for importing real-world media batches into the archive while upholding the core principle: **Automation may organize data, but it must never invent truth.**
+
+```text
+REAL-WORLD MEDIA
+       ↓
+IMPORT SESSION (Context: Title, Default Trip/Day)
+       ↓
+EXTRACT METADATA (EXIF, GPS, Taken Date, Dimensions, MIME)
+       ↓
+CONTENT HASH (SHA-256)
+       ↓
+DUPLICATE CHECK (Against Archive DB & Batch)
+       ↓
+DETERMINISTIC SUGGESTIONS (Trip range, Day date, Proximity candidates up to 25km)
+       ↓
+OPERATOR REVIEW & SMART GROUPING (Bounded Pagination, Place/Type/Status Groups)
+       ↓
+ARCHIVE (media.visibility = 'PRIVATE', itemized session audit)
+       ↓
+CURATION HANDOFF (/studio/archive?trip=...)
+```
+
+### Key Components & Invariants
+1. **Import Session Model**:
+   - `import_sessions`: Groups batch operations with lifecycle status (`CREATED` → `PROCESSING` → `COMPLETED` / `REVIEW_REQUIRED` / `FAILED` / `CANCELLED`) and truthful metrics (`total_files`, `processed_files`, `successful_files`, `duplicate_files`, `failed_files`).
+   - `import_session_items`: Item-level transaction log recording file-by-file outcomes (`QUEUED`, `PROCESSING`, `SUCCESS`, `DUPLICATE`, `FAILED`) and specific actionable error reasons.
+   - `media.import_session_id`: Referential foreign key linking archived assets back to their originating import session for auditability.
+2. **Resumable Imports & Selective Retry**:
+   - In large batches, failures are isolated to the specific file.
+   - Retrying a session resets only `FAILED` items to `QUEUED`. Successful uploads and confirmed duplicates are never unnecessarily reprocessed.
+3. **Bounded DOM & Large Batch Handling**:
+   - Client workspace uses bounded pagination (48 items per page) and Smart Grouping (by Place, Media Type, or Status) to ensure smooth 60fps performance on 100–500 file batches.
+4. **Candidate GPS Proximity Suggestions**:
+   - EXIF GPS coordinates evaluate known places within 25 km, presenting ranked candidates with exact distances (e.g. Pangong Lake 12.4 km vs Spangmik Village 14.1 km).
+   - Suggestions remain strictly labelled `SUGGESTED`; human operator confirmation is required before assignment.
+5. **Direct Pipeline Integration**:
+   - Successful imports seamlessly offer direct handoff to Archive Curation (`/studio/archive?trip=...`) and Import History (`/studio/imports/[id]`).
+
+---
+
+## 12. Backup & Disaster Recovery Strategy
 
 Because this is a permanent lifetime archive:
 1. **Database**: Nightly automated logical backups via Supabase + point-in-time recovery (PITR). An export script (`npm run archive:export`) dumps canonical JSON schemas and journals.
 2. **Storage**: Supabase Storage buckets mirrored or synced to secondary cold storage (AWS S3 Glacier or Cloudflare R2).
 3. **Code & Configuration**: Source code hosted on GitHub; all schema definitions version-controlled in `supabase/migrations/`.
-

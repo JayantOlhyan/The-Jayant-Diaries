@@ -53,6 +53,7 @@ export function PublicHeader() {
   const navLinks = [
     { href: '/journeys', label: 'Journeys' },
     { href: '/places', label: 'Places' },
+    { href: '/map', label: 'Map' },
     { href: '/stories', label: 'Stories' },
     { href: '/media', label: 'Archive' },
   ];

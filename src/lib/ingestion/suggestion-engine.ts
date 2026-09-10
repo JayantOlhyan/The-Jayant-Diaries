@@ -71,13 +71,18 @@ export function generateSuggestions(
     }
   }
 
-  // 3. Place Suggestion: Based strictly on GPS proximity (threshold: 15 km)
+  // 3. Place Suggestion: Based strictly on GPS proximity (threshold: 15 km, candidates up to 25 km)
   const lat = metadata?.latitude ?? metadata?.gps?.latitude;
   const lng = metadata?.longitude ?? metadata?.gps?.longitude;
+  const candidatePlaces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    distanceKm: number;
+  }> = [];
 
   if (lat != null && lng != null && isValidCoordinate(lat, lng)) {
-    let closestPlace: PlaceRow | null = null;
-    let minDistance = Infinity;
+    const nearbyList: Array<{ place: PlaceRow; distanceKm: number }> = [];
 
     for (const place of places) {
       if (isValidCoordinate(place.latitude, place.longitude)) {
@@ -87,21 +92,34 @@ export function generateSuggestions(
           place.latitude as number,
           place.longitude as number
         );
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestPlace = place;
+        if (dist <= 25) {
+          nearbyList.push({
+            place,
+            distanceKm: Math.round(dist * 10) / 10,
+          });
         }
       }
     }
 
-    if (closestPlace && minDistance <= 15) {
-      const roundedDist = Math.round(minDistance * 10) / 10;
+    nearbyList.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    for (const item of nearbyList) {
+      candidatePlaces.push({
+        id: item.place.id,
+        name: item.place.name,
+        slug: item.place.slug,
+        distanceKm: item.distanceKm,
+      });
+    }
+
+    if (nearbyList.length > 0 && nearbyList[0].distanceKm <= 15) {
+      const closest = nearbyList[0];
       suggestedPlace = {
-        id: closestPlace.id,
-        name: closestPlace.name,
-        slug: closestPlace.slug,
-        distanceKm: roundedDist,
-        reason: `GPS coordinates are within ${roundedDist} km of ${closestPlace.name}.`,
+        id: closest.place.id,
+        name: closest.place.name,
+        slug: closest.place.slug,
+        distanceKm: closest.distanceKm,
+        reason: `GPS coordinates are within ${closest.distanceKm} km of ${closest.place.name}.`,
       };
     }
   }
@@ -114,6 +132,7 @@ export function generateSuggestions(
     suggestedTrip,
     suggestedDay,
     suggestedPlace,
+    candidatePlaces,
     suggested_trip: matchedTripRow
       ? { trip: matchedTripRow, confidence: 'HIGH', reason: suggestedTrip!.reason }
       : null,

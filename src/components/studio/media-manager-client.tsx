@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
   Search,
   Plus,
+  UploadCloud,
   MoreVertical,
   Star,
   Trash2,
@@ -201,6 +203,17 @@ export function MediaManagerClient({
             <ArrowUpDown className="w-3.5 h-3.5" />
             {isReordering ? 'Done Ordering' : 'Reorder Mode'}
           </button>
+
+          <Link href="/studio/import">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+            >
+              <UploadCloud className="w-4 h-4" />
+              Batch Ingestion
+            </Button>
+          </Link>
 
           <Button
             variant="primary"

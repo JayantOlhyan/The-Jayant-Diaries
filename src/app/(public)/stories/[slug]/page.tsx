@@ -1,249 +1,302 @@
-import { notFound } from "next/navigation";
-import { Metadata } from "next";
-import Link from "next/link";
-import { MemoryRepository } from "@/server/repositories/memory-repository";
-import { PlaceRepository } from "@/server/repositories/place-repository";
-import { TripRepository } from "@/server/repositories/trip-repository";
-import { MediaRepository } from "@/server/repositories/media-repository";
-import { ImageFrame } from "@/components/ui/image-frame";
+import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
+import Link from 'next/link';
+import { StoryRepository } from '@/server/repositories/story-repository';
+import { MemoryRepository } from '@/server/repositories/memory-repository';
+import { PlaceRepository } from '@/server/repositories/place-repository';
+import { TripRepository } from '@/server/repositories/trip-repository';
+import { MediaRepository } from '@/server/repositories/media-repository';
+import { StoryWithDetails } from '@/types/entities';
 
 interface StoryPageProps {
   params: Promise<{ slug: string }>;
 }
 
-
-
-async function findMemory(slug: string) {
-  let memory = await MemoryRepository.getPublicMemoryById(slug);
-  if (!memory) {
-    const allPublic = await MemoryRepository.getPublicMemories();
-    memory =
-      allPublic.find(
-        (m) =>
-          m.id === slug ||
-          m.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug
-      ) || null;
-  }
-  return memory;
-}
-
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const memory = await findMemory(slug);
-  if (!memory) {
-    return { title: "Story Not Found — The Jayant Diaries" };
+  const story = await StoryRepository.getPublishedStoryBySlug(slug);
+
+  if (story) {
+    return {
+      title: `${story.title} — The Jayant Diaries`,
+      description: story.subtitle || `A travel story from ${story.trip?.title || 'the archive'}.`,
+    };
   }
-  return {
-    title: `${memory.title} — The Jayant Diaries`,
-    description: memory.description || memory.journal?.slice(0, 160) || "A travel story by Jayant.",
-  };
+
+  // Fallback memory check
+  const memory = await MemoryRepository.getPublicMemoryById(slug);
+  if (memory) {
+    return {
+      title: `${memory.title} — The Jayant Diaries`,
+      description: memory.description || memory.journal?.slice(0, 160) || 'A travel story by Jayant.',
+    };
+  }
+
+  return { title: 'Story Not Found — The Jayant Diaries' };
 }
 
-export default async function StoryDetailPage({ params }: StoryPageProps) {
+export default async function PublicStoryDetailPage({ params }: StoryPageProps) {
   const { slug } = await params;
-  const memory = await findMemory(slug);
 
+  // Primary: Editorial Story Model
+  const story = await StoryRepository.getPublishedStoryBySlug(slug);
+
+  if (story) {
+    const allPublished = await StoryRepository.getPublishedStories();
+    const currentIdx = allPublished.findIndex((s) => s.id === story.id);
+    const prevStory = currentIdx > 0 ? allPublished[currentIdx - 1] : null;
+    const nextStory = currentIdx >= 0 && currentIdx < allPublished.length - 1 ? allPublished[currentIdx + 1] : null;
+
+    const blocks = story.parsedContent || [];
+
+    return (
+      <article className="min-h-screen bg-cinema-black text-white selection:bg-cinema-accent selection:text-white pb-32">
+        {/* Navigation Bar */}
+        <div className="border-b border-cinema-border/60 bg-cinema-card/30">
+          <div className="mx-auto max-w-5xl px-6 py-6 flex items-center justify-between text-xs font-mono text-cinema-muted">
+            <Link
+              href="/stories"
+              className="hover:text-cinema-accent transition-colors flex items-center gap-1.5"
+            >
+              <span>←</span> All Stories
+            </Link>
+            {story.trip && (
+              <Link
+                href={`/journeys/${story.trip.slug}`}
+                className="text-white hover:text-cinema-accent transition-colors truncate max-w-[250px] sm:max-w-none"
+              >
+                Journey: <span className="underline decoration-cinema-border">{story.trip.title}</span>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <header className="relative w-full min-h-[65vh] flex flex-col justify-end p-6 sm:p-12 lg:p-20 border-b border-cinema-border/60 overflow-hidden bg-gradient-to-t from-cinema-black via-cinema-black/70 to-transparent">
+          {story.coverMedia?.storage_path && (
+            <img
+              src={`/api/media/${story.coverMedia.id}`}
+              alt={story.title}
+              className="absolute inset-0 w-full h-full object-cover opacity-45 mix-blend-luminosity scale-105"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-cinema-black via-cinema-black/60 to-transparent" />
+
+          <div className="relative z-10 max-w-4xl mx-auto w-full space-y-4">
+            <div className="flex items-center gap-3 text-xs font-mono text-cinema-accent uppercase tracking-widest">
+              {story.trip ? <span>{story.trip.title}</span> : <span>Editorial Archive</span>}
+              {story.trip?.start_date && <span>• {new Date(story.trip.start_date).getFullYear()}</span>}
+            </div>
+
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif font-normal text-white tracking-tight leading-tight">
+              {story.title}
+            </h1>
+
+            {story.subtitle && (
+              <p className="text-lg sm:text-2xl font-serif text-cinema-muted italic max-w-3xl font-light leading-relaxed">
+                {story.subtitle}
+              </p>
+            )}
+          </div>
+        </header>
+
+        {/* Editorial Body */}
+        <div className="max-w-3xl mx-auto px-6 py-16 space-y-12 font-serif text-neutral-200 leading-relaxed">
+          {blocks.map((block) => {
+            if (block.type === 'INTRO') {
+              return (
+                <p
+                  key={block.id}
+                  className="text-xl sm:text-2xl font-serif italic text-neutral-100 font-light leading-relaxed border-l-2 border-cinema-accent/60 pl-6 my-8"
+                >
+                  {block.text}
+                </p>
+              );
+            }
+
+            if (block.type === 'TEXT') {
+              return (
+                <p
+                  key={block.id}
+                  className="text-base sm:text-lg text-neutral-300 font-light leading-relaxed whitespace-pre-line"
+                >
+                  {block.text}
+                </p>
+              );
+            }
+
+            if (block.type === 'QUOTE') {
+              return (
+                <blockquote
+                  key={block.id}
+                  className="my-12 text-center py-8 border-y border-cinema-border/60 space-y-3"
+                >
+                  <p className="text-2xl sm:text-3xl font-serif italic text-cinema-accent/90 font-light">
+                    &ldquo;{block.text}&rdquo;
+                  </p>
+                </blockquote>
+              );
+            }
+
+            if (block.type === 'DIVIDER') {
+              return (
+                <div key={block.id} className="my-16 flex items-center justify-center gap-3">
+                  <div className="w-12 h-[1px] bg-cinema-border" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-cinema-accent/60" />
+                  <div className="w-12 h-[1px] bg-cinema-border" />
+                </div>
+              );
+            }
+
+            if (block.type === 'MEDIA') {
+              return (
+                <figure key={block.id} className="my-12 space-y-3">
+                  {block.media?.storage_path && (
+                    <img
+                      src={`/api/media/${block.media.id}`}
+                      alt={block.caption || 'Story photography'}
+                      className="w-full rounded-xl object-cover max-h-[75vh] bg-cinema-card border border-white/[0.08] shadow-2xl"
+                    />
+                  )}
+                  {block.caption && (
+                    <figcaption className="text-xs text-center font-serif italic text-cinema-muted">
+                      {block.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              );
+            }
+
+            if (block.type === 'MEMORY') {
+              return (
+                <div
+                  key={block.id}
+                  className="my-10 p-6 bg-cinema-card/40 border border-white/[0.08] rounded-2xl space-y-3"
+                >
+                  <span className="text-[10px] font-mono text-cinema-accent uppercase tracking-widest">
+                    Memory Record
+                  </span>
+                  <h3 className="text-xl font-serif text-white font-normal">
+                    {block.memory?.title}
+                  </h3>
+                  {block.memory?.journal && (
+                    <p className="text-sm font-serif italic text-neutral-300 leading-relaxed">
+                      &ldquo;{block.memory.journal}&rdquo;
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            if (block.type === 'PLACE') {
+              return (
+                <div
+                  key={block.id}
+                  className="my-8 p-5 bg-cinema-card/30 border border-white/[0.06] rounded-xl flex items-center justify-between"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">
+                      Featured Location
+                    </span>
+                    <h4 className="text-lg font-serif text-white">
+                      {block.place?.name}
+                    </h4>
+                    {block.place && (
+                      <p className="text-xs font-mono text-cinema-muted">
+                        {[block.place.city, block.place.state, block.place.country].filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+
+        {/* Story Navigation Footer */}
+        <footer className="max-w-4xl mx-auto px-6 pt-12 border-t border-cinema-border/60">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {prevStory ? (
+              <Link
+                href={`/stories/${prevStory.slug}`}
+                className="group p-6 rounded-xl border border-white/[0.08] bg-cinema-card/30 hover:border-cinema-accent/40 transition-all text-left space-y-2"
+              >
+                <span className="text-[10px] font-mono text-cinema-muted uppercase">← Previous Story</span>
+                <h4 className="font-serif text-lg text-white group-hover:text-cinema-accent transition-colors">
+                  {prevStory.title}
+                </h4>
+              </Link>
+            ) : <div />}
+
+            {nextStory ? (
+              <Link
+                href={`/stories/${nextStory.slug}`}
+                className="group p-6 rounded-xl border border-white/[0.08] bg-cinema-card/30 hover:border-cinema-accent/40 transition-all text-right space-y-2"
+              >
+                <span className="text-[10px] font-mono text-cinema-muted uppercase">Next Story →</span>
+                <h4 className="font-serif text-lg text-white group-hover:text-cinema-accent transition-colors">
+                  {nextStory.title}
+                </h4>
+              </Link>
+            ) : <div />}
+          </div>
+        </footer>
+      </article>
+    );
+  }
+
+  // Fallback: Legacy Memory rendering if not found in Story repository
+  const memory = await MemoryRepository.getPublicMemoryById(slug);
   if (!memory) notFound();
 
-  const [place, trip, allMedia, allPublicMemories] = await Promise.all([
+  const [place, trip, allMedia] = await Promise.all([
     memory.place_id ? PlaceRepository.getPlaceById(memory.place_id) : Promise.resolve(null),
     memory.trip_id ? TripRepository.getTripById(memory.trip_id) : Promise.resolve(null),
     MediaRepository.getPublicMedia(),
-    MemoryRepository.getPublicMemories(),
   ]);
 
   const mediaForMemory = allMedia.find((m) => m.memory_id === memory.id);
-  const heroImage = mediaForMemory?.storage_url || "";
-
-  const wordCount = ((memory.journal || "") + " " + (memory.description || "")).split(
-    /\s+/
-  ).length;
-  const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 180));
-
-  // Find other stories for the "Next Stories" footer
-  const otherStories = allPublicMemories
-    .filter((m) => m.id !== memory.id)
-    .slice(0, 2);
 
   return (
     <article className="min-h-screen bg-cinema-black text-white selection:bg-cinema-accent selection:text-white pb-32">
-      {/* Top Breadcrumb & Navigation */}
       <div className="border-b border-cinema-border/60 bg-cinema-card/30">
         <div className="mx-auto max-w-4xl px-6 py-6 flex items-center justify-between text-xs font-mono text-cinema-muted">
-          <Link
-            href="/stories"
-            className="hover:text-cinema-accent transition-colors flex items-center gap-1.5"
-          >
+          <Link href="/stories" className="hover:text-cinema-accent transition-colors flex items-center gap-1.5">
             <span>←</span> Back to Stories
           </Link>
           {trip && (
-            <Link
-              href={`/journeys/${trip.slug}`}
-              className="text-white hover:text-cinema-accent transition-colors truncate max-w-[200px] sm:max-w-none"
-            >
+            <Link href={`/journeys/${trip.slug}`} className="text-white hover:text-cinema-accent transition-colors">
               Part of: <span className="underline decoration-cinema-border">{trip.title}</span>
             </Link>
           )}
         </div>
       </div>
 
-      {/* Story Header */}
-      <header className="mx-auto max-w-3xl px-6 pt-16 pb-12 text-center">
-        <div className="flex items-center justify-center gap-3 text-xs uppercase tracking-[0.25em] text-cinema-accent mb-6 font-mono">
-          <span>Field Note</span>
-          {place && (
-            <>
-              <span>•</span>
-              <span className="text-white/80">{place.name}</span>
-            </>
-          )}
-        </div>
-
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-white leading-tight">
+      <header className="mx-auto max-w-3xl px-6 pt-16 pb-12 text-center space-y-4">
+        <span className="text-xs font-mono text-cinema-accent uppercase tracking-widest">
+          {place ? place.name : 'Field Note'}
+        </span>
+        <h1 className="text-4xl sm:text-5xl font-serif text-white font-normal">
           {memory.title}
         </h1>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-cinema-muted font-mono border-y border-cinema-border/60 py-4 max-w-xl mx-auto">
-          {memory.date && (
-            <div>
-              <span className="text-cinema-muted/60">Date:</span>{" "}
-              <span className="text-white">
-                {new Date(memory.date).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
-          )}
-          <div>
-            <span className="text-cinema-muted/60">Reading time:</span>{" "}
-            <span className="text-white">{readTimeMinutes} min</span>
-          </div>
-          <div>
-            <span className="text-cinema-muted/60">Author:</span>{" "}
-            <span className="text-white">Jayant Olhyan</span>
-          </div>
-        </div>
       </header>
 
-      {/* Hero Image */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 mb-16">
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-cinema-border/80 shadow-2xl">
-          <ImageFrame
-            src={heroImage}
+      {mediaForMemory?.storage_path && (
+        <div className="max-w-4xl mx-auto px-6 mb-12">
+          <img
+            src={`/api/media/${mediaForMemory.id}`}
             alt={memory.title}
-            fill
-            priority
+            className="w-full rounded-2xl object-cover max-h-[70vh] bg-cinema-card border border-white/[0.08]"
           />
         </div>
-        {mediaForMemory?.caption && (
-          <p className="mt-3 text-center text-xs italic text-cinema-muted font-serif">
-            {mediaForMemory.caption}
-          </p>
-        )}
-      </div>
-
-      {/* Narrative Story Content */}
-      <div className="mx-auto max-w-2xl px-6">
-        <div className="space-y-6 text-base sm:text-lg leading-relaxed text-zinc-300 font-light">
-          {/* Highlight lead paragraph */}
-          {memory.description && (
-            <p className="text-lg sm:text-xl font-serif italic text-white/90 leading-relaxed border-l-2 border-cinema-accent pl-6 my-8">
-              &ldquo;{memory.description}&rdquo;
-            </p>
-          )}
-
-          {/* Journal narrative body */}
-          {memory.journal ? (
-            <div className="space-y-6 first-letter:text-5xl first-letter:font-serif first-letter:float-left first-letter:mr-3 first-letter:text-cinema-accent first-letter:leading-none">
-              {memory.journal.split("\n\n").map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
-            </div>
-          ) : (
-            <p className="italic text-cinema-muted">
-              No extended field notes were recorded for this entry.
-            </p>
-          )}
-        </div>
-
-        {/* Place & Journey Context Card */}
-        {(place || trip) && (
-          <div className="mt-16 rounded-xl border border-cinema-border/60 bg-cinema-card/40 p-6 sm:p-8 space-y-4">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cinema-muted font-mono">
-              Geographic & Journey Context
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              {place && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-cinema-muted">Location</h4>
-                  <p className="font-serif text-base text-white mt-1">{place.name}</p>
-                  {place.latitude && place.longitude && (
-                    <p className="text-xs text-cinema-muted font-mono mt-0.5">
-                      {place.latitude.toFixed(4)}° N, {place.longitude.toFixed(4)}° E
-                    </p>
-                  )}
-                </div>
-              )}
-              {trip && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-cinema-muted">From the Journey</h4>
-                  <Link
-                    href={`/journeys/${trip.slug}`}
-                    className="font-serif text-base text-cinema-accent hover:underline block mt-1"
-                  >
-                    {trip.title} →
-                  </Link>
-                  <p className="text-xs text-cinema-muted mt-0.5">Explore full expedition</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Author Sign-off */}
-        <div className="mt-16 pt-8 border-t border-cinema-border/60 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-cinema-border/80 border border-cinema-border flex items-center justify-center font-serif text-lg font-bold text-cinema-accent">
-            J
-          </div>
-          <div>
-            <h4 className="text-sm font-serif font-medium text-white">Jayant Olhyan</h4>
-            <p className="text-xs text-cinema-muted">
-              Creator of The Jayant Diaries • Preserving journeys on personal servers
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Further Exploration */}
-      {otherStories.length > 0 && (
-        <section className="mx-auto max-w-4xl px-6 mt-24 pt-16 border-t border-cinema-border/60">
-          <h3 className="font-serif text-2xl text-white mb-8">More Field Notes</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {otherStories.map((s) => (
-              <Link
-                key={s.id}
-                href={`/stories/${s.id}`}
-                className="group rounded-lg border border-cinema-border/60 bg-cinema-card/30 p-6 transition-all duration-300 hover:border-cinema-border hover:bg-cinema-card/60"
-              >
-                <span className="text-[10px] font-mono uppercase text-cinema-accent tracking-wider">
-                  {s.date ? new Date(s.date).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "Archive"}
-                </span>
-                <h4 className="font-serif text-lg text-white group-hover:text-cinema-accent transition-colors mt-2">
-                  {s.title}
-                </h4>
-                <p className="text-xs text-cinema-muted line-clamp-2 mt-2 leading-relaxed">
-                  {s.description || s.journal}
-                </p>
-                <span className="text-xs text-cinema-accent group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-                  Read Note →
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
       )}
+
+      <div className="max-w-2xl mx-auto px-6 font-serif text-neutral-300 leading-relaxed text-lg space-y-6">
+        {memory.journal && <p className="whitespace-pre-line">{memory.journal}</p>}
+        {memory.description && <p className="text-neutral-400 italic text-base">{memory.description}</p>}
+      </div>
     </article>
   );
 }

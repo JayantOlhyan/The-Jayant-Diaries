@@ -232,6 +232,13 @@ export class TripRepository {
   }
 
   /**
+   * Retrieves all trips across the archive.
+   */
+  static async getAllTrips(): Promise<TripRow[]> {
+    return this.getAllStudioTrips();
+  }
+
+  /**
    * Finds any trip by its unique ID.
    */
   static async getTripById(id: string): Promise<TripRow | null> {

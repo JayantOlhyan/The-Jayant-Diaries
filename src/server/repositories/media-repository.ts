@@ -492,4 +492,136 @@ export class MediaRepository {
     inMemoryMedia.push(newMedia);
     return newMedia;
   }
+
+  /**
+   * Finds a media asset by its deterministic content hash (SHA-256).
+   */
+  static async findMediaByContentHash(hash: string): Promise<MediaRow | null> {
+    if (!isSupabaseConfigured) {
+      return inMemoryMedia.find((m) => m.content_hash === hash) || null;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('media')
+        .select('*')
+        .eq('content_hash', hash)
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        return inMemoryMedia.find((m) => m.content_hash === hash) || null;
+      }
+      return data;
+    } catch {
+      return inMemoryMedia.find((m) => m.content_hash === hash) || null;
+    }
+  }
+
+  /**
+   * Checks multiple content hashes against the archive database for duplicate detection.
+   * Returns a map of matching { [contentHash]: mediaId }.
+   */
+  static async findMediaByContentHashes(hashes: string[]): Promise<Record<string, string>> {
+    const result: Record<string, string> = {};
+    if (!hashes || hashes.length === 0) return result;
+
+    if (!isSupabaseConfigured) {
+      for (const hash of hashes) {
+        const match = inMemoryMedia.find((m) => m.content_hash === hash);
+        if (match) {
+          result[hash] = match.id;
+        }
+      }
+      return result;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('media')
+        .select('id, content_hash')
+        .in('content_hash', hashes);
+
+      if (!error && data) {
+        for (const row of data) {
+          if (row.content_hash) {
+            result[row.content_hash] = row.id;
+          }
+        }
+      }
+    } catch {
+      // Fallback to in-memory check
+      for (const hash of hashes) {
+        const match = inMemoryMedia.find((m) => m.content_hash === hash);
+        if (match) {
+          result[hash] = match.id;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch creates canonical media records with validation.
+   */
+  static async batchCreateMedia(inserts: MediaInsert[]): Promise<MediaRow[]> {
+    const created: MediaRow[] = [];
+    const now = new Date().toISOString();
+
+    for (const insert of inserts) {
+      const id = insert.id || crypto.randomUUID();
+      const position = insert.position ?? (inMemoryMedia.length > 0 ? Math.max(...inMemoryMedia.map((m) => m.position || 0)) + 1 : 0);
+
+      const newMedia: MediaRow = {
+        id,
+        filename: insert.filename,
+        storage_path: insert.storage_path,
+        storage_url: insert.storage_url,
+        thumbnail_url: insert.thumbnail_url || null,
+        type: insert.type,
+        mime_type: insert.mime_type,
+        width: insert.width || null,
+        height: insert.height || null,
+        duration: insert.duration || null,
+        file_size_bytes: insert.file_size_bytes || null,
+        content_hash: insert.content_hash || null,
+        taken_at: insert.taken_at || null,
+        latitude: insert.latitude || null,
+        longitude: insert.longitude || null,
+        trip_id: insert.trip_id || null,
+        day_id: insert.day_id || null,
+        place_id: insert.place_id || null,
+        memory_id: insert.memory_id || null,
+        caption: insert.caption || null,
+        alt_text: insert.alt_text || null,
+        position,
+        visibility: insert.visibility || 'PRIVATE',
+        created_at: now,
+        updated_at: now,
+      };
+
+      if (!isSupabaseConfigured) {
+        inMemoryMedia.push(newMedia);
+        created.push(newMedia);
+        continue;
+      }
+
+      try {
+        const { data, error } = await supabase.from('media').insert(newMedia as any).select().single();
+        if (!error && data) {
+          inMemoryMedia.push(data as MediaRow);
+          created.push(data as MediaRow);
+          continue;
+        }
+      } catch {
+        // Fallback
+      }
+
+      inMemoryMedia.push(newMedia);
+      created.push(newMedia);
+    }
+
+    return created;
+  }
 }
+

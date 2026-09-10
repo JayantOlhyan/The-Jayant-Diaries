@@ -79,10 +79,26 @@ Ensure the following buckets are configured in the Supabase Dashboard:
 
 ---
 
-## 6. Rollback & Disaster Recovery
+## 6. Backup, Recovery & Source of Truth
 
-### Application Rollback
-- In Vercel Dashboard → Deployments, locate the previous stable deployment and click **Instant Rollback**.
+### Source of Truth Architecture
+1. **Canonical Relational Data**: PostgreSQL database hosted on Supabase (`trips`, `days`, `places`, `memories`, `media`, `stories`, `tags`).
+2. **Canonical Binary Assets**: Supabase Storage buckets (`media-private` for master archival originals, `media-public` for published assets).
+3. **Application Logic & Schema Definition**: Git repository (`main` branch) and `supabase/migrations/`.
+4. **Environment Configuration**: Secrets and deployment variables stored securely in hosting environment (Vercel Dashboard / Supabase Vault).
 
-### Database Point-In-Time Recovery (PITR)
-- In Supabase Dashboard → Project Settings → Database Backups, initiate PITR restoration to a specific timestamp if a destructive mutation occurred.
+### Backup Dependencies & Policy
+- **What Must Be Backed Up Regularly**:
+  - **Supabase Postgres Database**: Full daily pg_dump automated backups + Point-In-Time Recovery (PITR) enabled.
+  - **Supabase Storage Master Bucket (`media-private`)**: Primary archival copies of original photography, videos, and media binaries.
+- **What Is Reconstructable**:
+  - Derived image thumbnails and webp derivatives (can be regenerated from `media-private` originals).
+  - Search indices (rebuilt dynamically from PostgreSQL records).
+  - Static pages and sitemaps (generated on-demand or at build time).
+- **What Must Never Be Deleted**:
+  - Master records in `media-private` storage.
+  - Historical migration SQL scripts in `supabase/migrations/`.
+
+### Rollback & Disaster Recovery Procedures
+- **Application Rollback**: In Vercel Dashboard → Deployments, select the prior stable deployment SHA and click **Instant Rollback**.
+- **Database Point-In-Time Recovery (PITR)**: In Supabase Dashboard → Settings → Database Backups, initiate PITR restoration to the target timestamp before incident.

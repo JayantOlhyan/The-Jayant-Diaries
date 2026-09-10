@@ -320,7 +320,43 @@ ARCHIVE DATABASE & METADATA
 
 ---
 
-## 13. Backup & Disaster Recovery Strategy
+## 13. Archive Intelligence & Personal Timeline Layer (Phase 13)
+
+Phase 13 introduces a deterministic personal travel-history layer on top of the canonical archive to transform structured travel records into actionable personal insights.
+
+```text
+CANONICAL ARCHIVE DATABASE
+       ↓
+TIMELINE REPOSITORY & AGGREGATION
+       ↓
+├── Chronological Timeline (Year/Month grouping, Date Unknown drawer)
+├── Deterministic Travel Statistics (Journeys, Places, Memories, Media)
+├── Destination Return Frequency ("Places I've Returned To")
+├── Year-over-Year Travel Evolution (Factual neutral metrics)
+└── Archive Completeness & Needs Attention Workbench
+       ↓
+STUDIO INTERFACE (/studio/timeline)
+```
+
+### Key Components & Invariants
+1. **100% Deterministic & Zero AI**:
+   - All timeline entries, destination frequencies, yearly aggregates, and completeness percentages are derived strictly from database rows. Zero AI, zero vector embeddings, zero LLM calls, and zero manufactured values.
+2. **Date Integrity & Missing Date Handling**:
+   - Items with exact start dates are placed into chronological Year and Month groups (newest first). Trips with missing dates are grouped into an explicit `"Date unknown"` drawer rather than assigning synthetic dates.
+3. **Repeated Destinations**:
+   - Destinations visited across multiple journeys are calculated dynamically based on relational associations and sorted deterministically by journey count, memory count, and media count.
+4. **Documented Archive Completeness Formula**:
+   - `Trips Date`: `(trips with start_date / total trips) * 100`
+   - `Places Coordinates`: `(places with lat & lng / total places) * 100`
+   - `Media Metadata`: `(media with taken_at & dimensions & place_id / total media) * 100`
+   - `Curation`: `(curated media / total media) * 100`
+   - `Overall`: Weighted average (25% each).
+5. **Needs Attention Workbench**:
+   - Directly links completeness gaps (`media missing taken-at date`, `places missing coordinates`, `unassigned media`) into existing Studio management routes (`/studio/media`, `/studio/places`, `/studio/archive`).
+
+---
+
+## 14. Backup & Disaster Recovery Strategy
 
 Because this is a permanent lifetime archive:
 1. **Database**: Nightly automated logical backups via Supabase + point-in-time recovery (PITR). An export script (`npm run archive:export`) dumps canonical JSON schemas and journals.

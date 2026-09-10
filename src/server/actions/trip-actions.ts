@@ -3,9 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { TripRepository, TripInsert, TripUpdate } from '@/server/repositories/trip-repository';
 import { tripSchema } from '@/lib/validation/entities';
+import { verifyStudioAuth } from '@/lib/auth/server';
 
 export async function createTripAction(formData: FormData) {
   try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
     const rawData = {
       title: formData.get('title') as string,
       slug: (formData.get('slug') as string) || (formData.get('title') as string)?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
@@ -31,7 +37,16 @@ export async function createTripAction(formData: FormData) {
 
 export async function updateTripAction(id: string, payload: Partial<TripUpdate>) {
   try {
-    const updated = await TripRepository.updateTrip(id, payload);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid trip ID is required' };
+    }
+
+    const updated = await TripRepository.updateTrip(id.trim(), payload);
     revalidatePath(`/studio/trips/${id}`);
     revalidatePath('/studio/trips');
     revalidatePath('/studio/dashboard');
@@ -43,7 +58,16 @@ export async function updateTripAction(id: string, payload: Partial<TripUpdate>)
 
 export async function deleteTripAction(id: string) {
   try {
-    await TripRepository.deleteTrip(id);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid trip ID is required' };
+    }
+
+    await TripRepository.deleteTrip(id.trim());
     revalidatePath('/studio/trips');
     revalidatePath('/studio/dashboard');
     return { success: true };

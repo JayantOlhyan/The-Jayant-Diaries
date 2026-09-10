@@ -31,8 +31,8 @@ export class SearchRepository {
     query: string,
     options: { limit?: number } = {}
   ): Promise<SearchResults> {
-    const trimmed = query.trim();
-    if (!trimmed) {
+    const rawTrimmed = (query || '').trim();
+    if (!rawTrimmed) {
       return {
         query: '',
         totalCount: 0,
@@ -44,8 +44,10 @@ export class SearchRepository {
       };
     }
 
+    // Bound query length to prevent pathological runaway regex or allocation
+    const trimmed = rawTrimmed.slice(0, 100);
     const q = trimmed.toLowerCase();
-    const limit = options.limit ?? 20;
+    const limit = Math.min(Math.max(1, typeof options.limit === 'number' && !isNaN(options.limit) ? options.limit : 20), 50);
 
     // Fetch all public candidate records across the repository boundary
     const [publicTrips, allPlaces, publicMemories, publicMedia] = await Promise.all([

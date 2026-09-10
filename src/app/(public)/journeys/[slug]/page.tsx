@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
-import { Metadata } from "next";
-import { TripRepository } from "@/server/repositories/trip-repository";
-import { JourneyDetailClient } from "@/components/public/journey-detail-client";
+import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
+import { TripRepository } from '@/server/repositories/trip-repository';
+import { StoryRepository } from '@/server/repositories/story-repository';
+import { JourneyDetailClient } from '@/components/public/journey-detail-client';
 
 interface JourneyPageProps {
   params: Promise<{ slug: string }>;
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: JourneyPageProps): Promise<Me
 
   if (!trip) {
     return {
-      title: "Journey Not Found — The Jayant Diaries",
+      title: 'Journey Not Found — The Jayant Diaries',
     };
   }
 
@@ -31,10 +32,14 @@ export default async function JourneyDetailPage({ params }: JourneyPageProps) {
     notFound();
   }
 
-  const details = await TripRepository.getTripWithDetails(trip.id);
+  const [details, stories] = await Promise.all([
+    TripRepository.getTripWithDetails(trip.id),
+    StoryRepository.getPublishedStoriesByTripId(trip.id),
+  ]);
+
   if (!details) {
     notFound();
   }
 
-  return <JourneyDetailClient trip={details} />;
+  return <JourneyDetailClient trip={details} stories={stories} />;
 }

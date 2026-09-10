@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { TripRepository } from '@/server/repositories/trip-repository';
+import { StoryRepository } from '@/server/repositories/story-repository';
 import { CinematicJourneyClient } from '@/components/public/cinematic-journey-client';
 
 interface CinematicPageProps {
@@ -38,5 +39,7 @@ export default async function CinematicJourneyPage({ params }: CinematicPageProp
     notFound();
   }
 
-  return <CinematicJourneyClient journey={journey} />;
+  const stories = await StoryRepository.getPublishedStoriesByTripId(journey.trip.id);
+
+  return <CinematicJourneyClient journey={journey} stories={stories} />;
 }

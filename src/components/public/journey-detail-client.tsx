@@ -22,13 +22,16 @@ import { InstagramCard } from '@/components/media/instagram-card';
 import { formatDate } from '@/lib/utils';
 import { getNormalizedImageUrl, getImageAlt } from '@/lib/utils/image-provider';
 
+import { StoryWithDetails } from '@/types/entities';
+
 interface JourneyDetailClientProps {
   trip: TripWithDetails;
+  stories?: StoryWithDetails[];
 }
 
 type TabKey = 'overview' | 'days' | 'places' | 'media';
 
-export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
+export function JourneyDetailClient({ trip, stories = [] }: JourneyDetailClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   // Filter public media strictly (Zero Private Data Leakage)
@@ -212,6 +215,39 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
                 {trip.description || 'No synopsis recorded for this journey.'}
               </p>
             </div>
+
+            {/* Stories Section */}
+            {stories && stories.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 border-b border-white/[0.08] pb-3">
+                  <span className="text-[11px] font-semibold tracking-[0.2em] text-amber-400 uppercase font-mono">
+                    Stories From This Journey
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {stories.map((story) => (
+                    <Link
+                      key={story.id}
+                      href={`/stories/${story.slug}`}
+                      className="group p-6 rounded-xl border border-white/[0.08] bg-neutral-900/40 hover:border-amber-500/40 transition-all space-y-3 block"
+                    >
+                      <h4 className="font-serif text-xl text-white group-hover:text-amber-300 transition-colors">
+                        {story.title}
+                      </h4>
+                      {story.subtitle && (
+                        <p className="text-xs text-neutral-400 line-clamp-2 italic font-serif">
+                          {story.subtitle}
+                        </p>
+                      )}
+                      <div className="pt-2 text-xs font-mono text-amber-400 flex items-center gap-1">
+                        <span>Read story</span>
+                        <span>→</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quote Box */}
             <div className="p-8 rounded-2xl bg-neutral-900/40 border border-white/[0.08] text-center space-y-2">

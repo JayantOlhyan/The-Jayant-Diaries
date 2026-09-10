@@ -24,11 +24,14 @@ import { InstagramCard } from '@/components/media/instagram-card';
 import { formatDate } from '@/lib/utils';
 import { getNormalizedImageUrl, getImageAlt } from '@/lib/utils/image-provider';
 
+import { StoryWithDetails } from '@/types/entities';
+
 interface CinematicJourneyClientProps {
   journey: CinematicJourney;
+  stories?: StoryWithDetails[];
 }
 
-export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps) {
+export function CinematicJourneyClient({ journey, stories = [] }: CinematicJourneyClientProps) {
   const router = useRouter();
   const { trip, statistics, days, coverMedia, closingMedia, nextTrip, previousTrip } = journey;
 
@@ -222,10 +225,16 @@ export function CinematicJourneyClient({ journey }: CinematicJourneyClientProps)
             </div>
           )}
 
-          {trip.description && (
-            <p className="text-sm sm:text-base text-neutral-400 max-w-2xl mx-auto font-sans leading-relaxed pt-2">
-              {trip.description}
-            </p>
+          {stories && stories.length > 0 && (
+            <div className="pt-2">
+              <Link
+                href={`/stories/${stories[0].slug}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono uppercase tracking-wider transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Read the full story &rarr;</span>
+              </Link>
+            </div>
           )}
 
           {/* Restrained Journey Statistics Bar */}

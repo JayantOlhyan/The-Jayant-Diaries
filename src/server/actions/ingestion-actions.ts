@@ -120,12 +120,16 @@ export async function archiveApprovedMediaBatchAction(
 
     const created = await MediaRepository.batchCreateMedia(inserts);
 
-    // Revalidate affected routes
-    revalidatePath('/studio/media');
-    revalidatePath('/studio/import');
-    revalidatePath('/studio/dashboard');
-    for (const tripId of affectedTripIds) {
-      revalidatePath(`/studio/trips/${tripId}`);
+    // Revalidate affected routes safely
+    try {
+      revalidatePath('/studio/media');
+      revalidatePath('/studio/import');
+      revalidatePath('/studio/dashboard');
+      for (const tripId of affectedTripIds) {
+        revalidatePath(`/studio/trips/${tripId}`);
+      }
+    } catch {
+      // Ignored outside Next.js request context (e.g., in unit tests)
     }
 
     return {

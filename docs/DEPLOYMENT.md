@@ -50,8 +50,14 @@ supabase db push --linked
 
 Or via direct PostgreSQL client:
 ```bash
-psql $DATABASE_URL -f supabase/migrations/YYYYMMDDHHMMSS_migration_name.sql
+# Apply Phase 11 Import Sessions migration
+psql $DATABASE_URL -f supabase/migrations/20260911000000_import_sessions.sql
 ```
+
+### Applied Migrations Inventory
+- `20260601000000_initial_schema.sql`: Core relational tables (`trips`, `days`, `places`, `media`, `memories`, `stories`, `tags`).
+- `20260715000000_storage_and_indices.sql`: Deterministic storage paths, RLS policies, and performance indices.
+- `20260911000000_import_sessions.sql`: Import sessions (`import_sessions`), item-level execution log (`import_session_items`), and `media.import_session_id` link.
 
 ---
 

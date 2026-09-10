@@ -148,14 +148,24 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
               </div>
             </div>
 
-            <Link
-              href={`/journeys/${trip.slug}/cinematic`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400/50 text-[11px] font-mono uppercase tracking-[0.2em] transition-all group shadow-sm hover:shadow-amber-500/10"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span>Experience the Journey</span>
-              <ArrowRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={`/map?journey=${trip.slug}`}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 hover:text-white border border-white/10 text-[11px] font-mono uppercase tracking-wider transition-all"
+              >
+                <Compass className="w-3.5 h-3.5 text-amber-400" />
+                <span>Explore on Map</span>
+              </Link>
+
+              <Link
+                href={`/journeys/${trip.slug}/cinematic`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400/50 text-[11px] font-mono uppercase tracking-[0.2em] transition-all group shadow-sm hover:shadow-amber-500/10"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span>Experience the Journey</span>
+                <ArrowRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -314,13 +324,23 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
         {/* PLACES TAB */}
         {activeTab === 'places' && (
           <div className="space-y-8">
-            <div className="border-b border-white/[0.08] pb-4">
-              <h2 className="font-serif text-3xl font-bold text-white">
-                Places Visited ({places.length})
-              </h2>
-              <p className="text-xs text-neutral-400 font-sans mt-1">
-                Mountain passes, high-altitude lakes, and settlements.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+              <div>
+                <h2 className="font-serif text-3xl font-bold text-white">
+                  Places Visited ({places.length})
+                </h2>
+                <p className="text-xs text-neutral-400 font-sans mt-1">
+                  Mountain passes, high-altitude lakes, and settlements.
+                </p>
+              </div>
+
+              <Link
+                href={`/map?journey=${trip.slug}`}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-mono uppercase tracking-wider transition-all self-start sm:self-auto"
+              >
+                <Compass className="w-3.5 h-3.5 text-amber-400" />
+                <span>Explore Journey on Map →</span>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -331,10 +351,13 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-serif text-xl font-bold text-white">
+                      <Link
+                        href={`/places/${place.slug}`}
+                        className="font-serif text-xl font-bold text-white hover:text-amber-400 transition-colors"
+                      >
                         {place.name}
-                      </h3>
-                      <p className="text-xs font-mono text-neutral-400">
+                      </Link>
+                      <p className="text-xs font-mono text-neutral-400 mt-0.5">
                         {place.state || place.country}
                       </p>
                     </div>
@@ -346,9 +369,11 @@ export function JourneyDetailClient({ trip }: JourneyDetailClientProps) {
                     )}
                   </div>
 
-                  <p className="text-xs text-neutral-300 leading-relaxed font-sans">
-                    {place.description || 'Himalayan destination documented during the expedition.'}
-                  </p>
+                  {place.description && (
+                    <p className="text-xs text-neutral-300 leading-relaxed font-sans font-light">
+                      {place.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

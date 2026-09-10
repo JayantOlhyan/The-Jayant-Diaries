@@ -154,10 +154,21 @@ media/
 
 ---
 
-## 8. Map Provider Abstraction
+## 8. Geographic Archive & Map Architecture (Phase 6)
 
-- Map visualizers consume an abstract GeoJSON-like interface (`src/lib/maps/types.ts`).
-- Neither Mapbox nor Google Maps is hardcoded into feature components. Switching providers requires changing only the client adapter in `src/lib/maps/`.
+- **Technology**: Leaflet 1.9 with CartoDB Dark Matter tiles (`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`).
+- **Zero API Key Overhead**: Uses open CartoDB Dark Matter basemap matching the dark cinema aesthetic (`#0B0D0E`) without requiring third-party SaaS tokens, credit cards, or external map subscription fees.
+- **Dynamic Client Loading**: Leaflet and its CSS are strictly loaded on-demand via `next/dynamic` (`ssr: false`) inside `/map` to ensure zero bundle overhead on non-map routes.
+- **Strict Coordinate Validation**: All coordinates are validated through `isValidCoordinate()` (finite, numbers, `[-90, 90]` lat, `[-180, 180]` lng). Places with invalid or missing coordinates are gracefully omitted from the public map canvas and flagged in Studio.
+- **Relational Integrity & Zero Inferred Matching**: Place-to-journey relationships are resolved strictly from explicit relations (Days, Memories, Media). No textual or name-based heuristics are permitted.
+- **Absolute Privacy Boundary**:
+  - `PUBLIC` places with valid coordinates render on `/map`.
+  - `PRIVATE` or `UNLISTED` places never leak to map props or `/api/map`.
+  - Related journeys shown on place cards only include `PUBLIC` and `PUBLISHED` trips.
+- **Routes**:
+  - `/(public)/map`: Interactive atlas with canonical URL filtering (`/map?journey=...`).
+  - `/api/map`: Minimal, sanitized public geographic JSON endpoint.
+  - `/studio/map`: Operational audit view displaying mapped/unmapped place counts and coordinate coverage.
 
 ---
 

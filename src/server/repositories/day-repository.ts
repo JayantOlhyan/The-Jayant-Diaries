@@ -30,12 +30,14 @@ export class DayRepository {
         .eq('trip_id', tripId)
         .order('day_number', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryDays.filter((d) => d.trip_id === tripId).sort((a, b) => a.day_number - b.day_number);
+      if (error) {
+        console.error('Supabase getDaysByTripId error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryDays.filter((d) => d.trip_id === tripId).sort((a, b) => a.day_number - b.day_number);
+      return data || [];
+    } catch (err: any) {
+      console.error('getDaysByTripId exception:', err?.message);
+      return [];
     }
   }
 
@@ -52,12 +54,14 @@ export class DayRepository {
         .select('*')
         .order('date', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryDays;
+      if (error) {
+        console.error('Supabase getAllDays error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryDays;
+      return data || [];
+    } catch (err: any) {
+      console.error('getAllDays exception:', err?.message);
+      return [];
     }
   }
 
@@ -76,11 +80,11 @@ export class DayRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryDays.find((d) => d.id === id) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryDays.find((d) => d.id === id) || null;
+      return null;
     }
   }
 

@@ -219,17 +219,19 @@ Categorical discovery metadata.
 ---
 
 ### 3.8 `stories`
-Long-form editorial essays (independent from specific trips).
+Human-authored editorial storytelling layer composed from archive entities (Trip → Story → Moments → Media).
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY DEFAULT gen_random_uuid()` | Unique story identifier |
 | `title` | `TEXT` | `NOT NULL` | Editorial title |
 | `slug` | `TEXT` | `NOT NULL UNIQUE` | Slug for `/stories/[slug]` |
-| `subtitle` | `TEXT` | `NULL` | Editorial sub-heading |
-| `content` | `TEXT` | `NOT NULL` | Rich text article body |
-| `cover_media_id`| `UUID` | `NULL REFERENCES media(id) ON DELETE SET NULL` | Hero visual |
+| `subtitle` | `TEXT` | `NULL` | Editorial sub-heading or intro |
+| `content` | `TEXT` | `NOT NULL` | JSON stringified array of `StoryBlock` objects |
+| `trip_id` | `UUID` | `NULL REFERENCES trips(id) ON DELETE SET NULL` | Associated Journey reference |
+| `cover_media_id`| `UUID` | `NULL REFERENCES media(id) ON DELETE SET NULL` | Hero visual from archive |
 | `featured` | `BOOLEAN` | `NOT NULL DEFAULT false` | Highlighted editorial story |
+| `status` | `TEXT` | `NOT NULL DEFAULT 'DRAFT'` | Story status lifecycle (`DRAFT`, `READY`, `PUBLISHED`, `ARCHIVED`) |
 | `visibility` | `visibility_type` | `NOT NULL DEFAULT 'PRIVATE'` | Visibility control |
 | `published_at` | `TIMESTAMPTZ` | `NULL` | Publication timestamp |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT now()` | Creation timestamp |

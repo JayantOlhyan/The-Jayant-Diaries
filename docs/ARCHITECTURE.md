@@ -76,13 +76,13 @@ The application enforces a strict unidirectional dependency structure:
    - `src/app/studio/*`: Authenticated Studio dashboards, batch upload drawers, editing forms.
    - `src/components/ui/*`: Primitive, accessible design-token driven components.
    - `src/components/public/*`: Cinematic hero sections, horizontal rails, lightbox galleries.
-   - `src/components/studio/*`: Operational tables, batch processors, metadata review grids.
+   - `src/components/studio/*`: Operational tables, batch processors, metadata review grids, story block editor.
 2. **Domain Features Layer (`src/features/*`)**:
    - Organizes components, hooks, and types by product domain (`trips`, `days`, `places`, `memories`, `media`, `instagram`, `stories`, `search`).
 3. **Application Service Layer (`src/server/services/*`)**:
-   - Implements business logic: batch media ingestion, metadata extraction orchestration, duplicate detection coordination, trip publishing pipelines.
+   - Implements business logic: batch media ingestion, metadata extraction orchestration, story readiness auditing, publication pipelines.
 4. **Repository Layer (`src/server/repositories/*`)**:
-   - Single point of contact with PostgreSQL. Encapsulates SQL queries and Supabase database clients. Enforces visibility filters.
+   - Single point of contact with PostgreSQL (`trip-repository`, `story-repository`, `memory-repository`, `media-repository`, `search-repository`, `timeline-repository`). Encapsulates SQL queries and Supabase database clients. Enforces visibility filters.
 5. **Infrastructure & Shared Utilities (`src/lib/`)**:
    - `lib/db/`: Database clients and connection pooling.
    - `lib/storage/`: S3/Supabase upload handlers and path generators.

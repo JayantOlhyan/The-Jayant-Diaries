@@ -22,7 +22,8 @@ This document outlines the security architecture, data privacy controls, and def
 ### [IMPLEMENTED]
 - **Client & Server Auth Tooling**: Configured Supabase SSR (`@supabase/ssr`) with cookie-based session handling in `src/lib/auth/server.ts` and `src/lib/auth/client.ts`.
 - **Public vs Studio Routing Boundaries**: Route architecture clearly isolates public read-only views (`src/app/(public)/*`) from Studio administration views (`src/app/studio/*`).
-- **Server-Side Authorization Enforcement**: All Studio Server Actions (`trip-actions`, `day-actions`, `place-actions`, `memory-actions`, `media-actions`, `curation-actions`, `ingestion-actions`) enforce `verifyStudioAuth()` on the server. Unauthenticated invocations are rejected immediately.
+- **Server-Side Authorization Enforcement**: All Studio Server Actions (`trip-actions`, `day-actions`, `place-actions`, `memory-actions`, `media-actions`, `curation-actions`, `ingestion-actions`, `story-actions`) enforce `verifyStudioAuth()` on the server. Unauthenticated invocations are rejected immediately.
+- **Story Publication Readiness Gate [IMPLEMENTED]**: Server-side validation gate (`checkStoryReadinessAction`) ensures a story cannot transition to `PUBLISHED` unless all referenced media, places, memories, and parent trip satisfy public visibility rules (`visibility = 'PUBLIC'`). Private or draft dependencies immediately block publication.
 - **Studio Route Middleware Guard**: Automated redirection to `/studio/login` for unauthenticated sessions on `/studio/*` paths via `middleware.ts`.
 - **Session Expiry & Token Rotation**: Refresh token rotation handled automatically via Supabase Auth cookies.
 

@@ -280,7 +280,7 @@ export function AddMediaModal({
           <div className="space-y-3 animate-fade-in">
             <Input
               label="Image URL"
-              placeholder="https://images.unsplash.com/..."
+              placeholder="https://..."
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               required

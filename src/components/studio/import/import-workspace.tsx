@@ -597,6 +597,49 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
     return groupItemsByDate(filteredItems);
   }, [filteredItems]);
 
+  const smartGroups = React.useMemo(() => {
+    if (groupingMode === 'NONE') return [];
+
+    const map = new Map<string, IngestionItem[]>();
+
+    for (const item of filteredItems) {
+      let key = 'Other';
+      if (groupingMode === 'PLACE') {
+        const place = places.find((p) => p.id === item.assigned_place_id);
+        key = place
+          ? place.name
+          : item.suggestions?.suggested_place
+          ? `Suggested: ${item.suggestions.suggested_place.place.name}`
+          : 'Unknown Place';
+      } else if (groupingMode === 'TYPE') {
+        key = item.metadata?.type === 'VIDEO' ? 'Videos' : 'Photos';
+      } else if (groupingMode === 'STATUS') {
+        if (item.status === 'ARCHIVED') key = 'Archived';
+        else if (item.status === 'FAILED') key = 'Failed';
+        else if (
+          item.duplicateStatus === 'EXACT_DUPLICATE' ||
+          item.duplicateStatus === 'BATCH_DUPLICATE'
+        )
+          key = 'Duplicates';
+        else if (item.reviewStatus === 'APPROVED') key = 'Ready to Archive';
+        else key = 'Needs Review';
+      }
+
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+
+    return Array.from(map.entries()).map(([label, groupItems]) => ({ label, items: groupItems }));
+  }, [filteredItems, groupingMode, places]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedItems = React.useMemo(() => {
+    if (groupingMode !== 'NONE') return filteredItems;
+    const start = (safePage - 1) * ITEMS_PER_PAGE;
+    return filteredItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredItems, safePage, groupingMode]);
+
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 p-6 md:p-8 space-y-6">
       {/* Top Header */}
@@ -837,39 +880,58 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <span className="text-xs text-stone-400 mr-1">View:</span>
-            <div className="inline-flex rounded-md bg-stone-900 p-1 border border-stone-800">
-              <button
-                onClick={() => setActiveTab('GRID')}
-                className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                  activeTab === 'GRID'
-                    ? 'bg-stone-800 text-amber-400 font-medium'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
+          <div className="flex flex-wrap items-center gap-3 self-end sm:self-auto">
+            <div className="flex items-center gap-1.5 text-xs text-stone-400">
+              <span>Group:</span>
+              <select
+                value={groupingMode}
+                onChange={(e) => {
+                  setGroupingMode(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="bg-stone-900 border border-stone-800 rounded px-2 py-1 text-xs text-stone-200 focus:outline-none focus:border-amber-500"
               >
-                Grid
-              </button>
-              <button
-                onClick={() => setActiveTab('CHRONO')}
-                className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                  activeTab === 'CHRONO'
-                    ? 'bg-stone-800 text-amber-400 font-medium'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                Timeline
-              </button>
-              <button
-                onClick={() => setActiveTab('TABLE')}
-                className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                  activeTab === 'TABLE'
-                    ? 'bg-stone-800 text-amber-400 font-medium'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                Table
-              </button>
+                <option value="NONE">None</option>
+                <option value="PLACE">By Place</option>
+                <option value="TYPE">By Media Type</option>
+                <option value="STATUS">By Status</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-stone-400">View:</span>
+              <div className="inline-flex rounded-md bg-stone-900 p-1 border border-stone-800">
+                <button
+                  onClick={() => setActiveTab('GRID')}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    activeTab === 'GRID'
+                      ? 'bg-stone-800 text-amber-400 font-medium'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setActiveTab('CHRONO')}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    activeTab === 'CHRONO'
+                      ? 'bg-stone-800 text-amber-400 font-medium'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  Timeline
+                </button>
+                <button
+                  onClick={() => setActiveTab('TABLE')}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    activeTab === 'TABLE'
+                      ? 'bg-stone-800 text-amber-400 font-medium'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  Table
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -990,6 +1052,55 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
             detect duplicates.
           </p>
         </div>
+      ) : groupingMode !== 'NONE' ? (
+        /* Smart Grouping View (Place, Type, Status) */
+        <div className="space-y-8">
+          {smartGroups.map((group) => (
+            <div key={group.label} className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-stone-200">{group.label}</span>
+                  <Badge variant="outline" className="text-xs text-stone-400 border-stone-800">
+                    {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
+                  </Badge>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const groupIds = group.items.map((i) => i.id);
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      for (const id of groupIds) next.add(id);
+                      return next;
+                    });
+                  }}
+                  className="text-xs text-stone-400 hover:text-stone-200"
+                >
+                  Select Group
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {group.items.map((item) => (
+                  <MediaItemCard
+                    key={item.id}
+                    item={item}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={() => handleToggleSelect(item.id)}
+                    onOpenDetail={() => setActiveDetailItem(item)}
+                    trips={trips}
+                    days={days}
+                    places={places}
+                    onOverrideDuplicate={() => handleOverrideDuplicate(item.id)}
+                    onRetry={() => handleRetryItem(item)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : activeTab === 'CHRONO' ? (
         /* Timeline Chronological Grouping View */
         <div className="space-y-8">
@@ -1046,166 +1157,232 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
         </div>
       ) : activeTab === 'TABLE' ? (
         /* Table View */
-        <div className="overflow-x-auto rounded-xl border border-stone-800 bg-stone-900/30">
-          <table className="w-full text-left text-xs text-stone-300">
-            <thead className="bg-stone-900/80 text-stone-400 uppercase tracking-wider text-[10px] border-b border-stone-800">
-              <tr>
-                <th className="p-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredItems.length > 0 &&
-                      filteredItems.every((i) => selectedIds.has(i.id))
-                    }
-                    onChange={() => handleSelectAllVisible(filteredItems.map((i) => i.id))}
-                    className="rounded bg-stone-950 border-stone-700 text-amber-500 focus:ring-0"
-                  />
-                </th>
-                <th className="p-3">Media</th>
-                <th className="p-3">Capture Date</th>
-                <th className="p-3">GPS Location</th>
-                <th className="p-3">Assigned Trip / Day</th>
-                <th className="p-3">Assigned Place</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-800/60">
-              {filteredItems.map((item) => {
-                const assignedTrip = trips.find((t) => t.id === item.assigned_trip_id);
-                const assignedDay = days.find((d) => d.id === item.assigned_day_id);
-                const assignedPlace = places.find((p) => p.id === item.assigned_place_id);
-                return (
-                  <tr
-                    key={item.id}
-                    className={`hover:bg-stone-800/30 transition-colors ${
-                      selectedIds.has(item.id) ? 'bg-amber-500/5' : ''
-                    }`}
-                  >
-                    <td className="p-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => handleToggleSelect(item.id)}
-                        className="rounded bg-stone-950 border-stone-700 text-amber-500 focus:ring-0"
-                      />
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-stone-800 overflow-hidden flex-shrink-0 relative">
-                          {item.metadata?.preview_url ? (
-                            <img
-                              src={item.metadata.preview_url}
-                              alt={item.file.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-stone-400">
-                              <FileText className="w-4 h-4" />
+        <div className="space-y-4">
+          <div className="overflow-x-auto rounded-xl border border-stone-800 bg-stone-900/30">
+            <table className="w-full text-left text-xs text-stone-300">
+              <thead className="bg-stone-900/80 text-stone-400 uppercase tracking-wider text-[10px] border-b border-stone-800">
+                <tr>
+                  <th className="p-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        paginatedItems.length > 0 &&
+                        paginatedItems.every((i) => selectedIds.has(i.id))
+                      }
+                      onChange={() => handleSelectAllVisible(paginatedItems.map((i) => i.id))}
+                      className="rounded bg-stone-950 border-stone-700 text-amber-500 focus:ring-0"
+                    />
+                  </th>
+                  <th className="p-3">Media</th>
+                  <th className="p-3">Capture Date</th>
+                  <th className="p-3">GPS Location</th>
+                  <th className="p-3">Assigned Trip / Day</th>
+                  <th className="p-3">Assigned Place</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-800/60">
+                {paginatedItems.map((item) => {
+                  const assignedTrip = trips.find((t) => t.id === item.assigned_trip_id);
+                  const assignedDay = days.find((d) => d.id === item.assigned_day_id);
+                  const assignedPlace = places.find((p) => p.id === item.assigned_place_id);
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-stone-800/30 transition-colors ${
+                        selectedIds.has(item.id) ? 'bg-amber-500/5' : ''
+                      }`}
+                    >
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => handleToggleSelect(item.id)}
+                          className="rounded bg-stone-950 border-stone-700 text-amber-500 focus:ring-0"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-stone-800 overflow-hidden flex-shrink-0 relative">
+                            {item.metadata?.preview_url ? (
+                              <img
+                                src={item.metadata.preview_url}
+                                alt={item.file.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-400">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="truncate max-w-[180px]">
+                            <div className="font-medium text-stone-200 truncate">
+                              {item.file.name}
                             </div>
-                          )}
-                        </div>
-                        <div className="truncate max-w-[180px]">
-                          <div className="font-medium text-stone-200 truncate">
-                            {item.file.name}
-                          </div>
-                          <div className="text-[10px] text-stone-400">
-                            {item.metadata?.file_size_bytes
-                              ? `${(item.metadata.file_size_bytes / (1024 * 1024)).toFixed(2)} MB`
-                              : ''}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      {item.metadata?.taken_at ? (
-                        <div className="text-stone-300">
-                          {new Date(item.metadata.taken_at).toLocaleString()}
-                        </div>
-                      ) : (
-                        <span className="text-stone-400 italic">Undated</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {item.metadata?.gps ? (
-                        <div className="flex items-center gap-1 text-emerald-400">
-                          <MapPin className="w-3 h-3" />
-                          <span>
-                            {item.metadata.gps.latitude.toFixed(4)},{' '}
-                            {item.metadata.gps.longitude.toFixed(4)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-stone-400">No GPS</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {assignedTrip ? (
-                        <div>
-                          <div className="text-stone-200 font-medium">{assignedTrip.title}</div>
-                          {assignedDay && (
                             <div className="text-[10px] text-stone-400">
-                              Day {assignedDay.day_number}: {assignedDay.title || assignedDay.date}
+                              {item.metadata?.file_size_bytes
+                                ? `${(item.metadata.file_size_bytes / (1024 * 1024)).toFixed(2)} MB`
+                                : ''}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      ) : (
-                        <span className="text-amber-400/80 italic">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {assignedPlace ? (
-                        <span className="text-stone-200">{assignedPlace.name}</span>
-                      ) : (
-                        <span className="text-stone-400 italic">None</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <ItemStatusBadge item={item} />
-                    </td>
-                    <td className="p-3 text-right space-x-2">
-                      {item.status === 'FAILED' && (
+                      </td>
+                      <td className="p-3">
+                        {item.metadata?.taken_at ? (
+                          <div className="text-stone-300">
+                            {new Date(item.metadata.taken_at).toLocaleString()}
+                          </div>
+                        ) : (
+                          <span className="text-stone-400 italic">Undated</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {item.metadata?.gps ? (
+                          <div className="flex items-center gap-1 text-emerald-400">
+                            <MapPin className="w-3 h-3" />
+                            <span>
+                              {item.metadata.gps.latitude.toFixed(4)},{' '}
+                              {item.metadata.gps.longitude.toFixed(4)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-stone-400">No GPS</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {assignedTrip ? (
+                          <div>
+                            <div className="text-stone-200 font-medium">{assignedTrip.title}</div>
+                            {assignedDay && (
+                              <div className="text-[10px] text-stone-400">
+                                Day {assignedDay.day_number}: {assignedDay.title || assignedDay.date}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-amber-400/80 italic">Unassigned</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {assignedPlace ? (
+                          <span className="text-stone-200">{assignedPlace.name}</span>
+                        ) : (
+                          <span className="text-stone-400 italic">None</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <ItemStatusBadge item={item} />
+                      </td>
+                      <td className="p-3 text-right space-x-2">
+                        {item.status === 'FAILED' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRetryItem(item)}
+                            className="text-xs border-red-700/50 text-red-400 hover:bg-red-500/10 h-7 px-2"
+                          >
+                            Retry
+                          </Button>
+                        )}
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => handleRetryItem(item)}
-                          className="text-xs border-red-700/50 text-red-400 hover:bg-red-500/10 h-7 px-2"
+                          variant="ghost"
+                          onClick={() => setActiveDetailItem(item)}
+                          className="text-xs text-amber-400 hover:text-amber-300 h-7 px-2"
                         >
-                          Retry
+                          Inspect
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setActiveDetailItem(item)}
-                        className="text-xs text-amber-400 hover:text-amber-300 h-7 px-2"
-                      >
-                        Inspect
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-stone-800/80 pt-3 px-1 text-xs text-stone-400">
+              <div>
+                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} items
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="border-stone-700 text-stone-300 h-7 text-xs flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                </Button>
+                <span className="text-stone-300 font-mono px-1">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="border-stone-700 text-stone-300 h-7 text-xs flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Card Grid View (Default) */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredItems.map((item) => (
-            <MediaItemCard
-              key={item.id}
-              item={item}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={() => handleToggleSelect(item.id)}
-              onOpenDetail={() => setActiveDetailItem(item)}
-              trips={trips}
-              days={days}
-              places={places}
-              onOverrideDuplicate={() => handleOverrideDuplicate(item.id)}
-              onRetry={() => handleRetryItem(item)}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {paginatedItems.map((item) => (
+              <MediaItemCard
+                key={item.id}
+                item={item}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelect={() => handleToggleSelect(item.id)}
+                onOpenDetail={() => setActiveDetailItem(item)}
+                trips={trips}
+                days={days}
+                places={places}
+                onOverrideDuplicate={() => handleOverrideDuplicate(item.id)}
+                onRetry={() => handleRetryItem(item)}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-stone-800/80 pt-3 px-1 text-xs text-stone-400">
+              <div>
+                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} items
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="border-stone-700 text-stone-300 h-7 text-xs flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                </Button>
+                <span className="text-stone-300 font-mono px-1">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="border-stone-700 text-stone-300 h-7 text-xs flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1341,9 +1518,21 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                       Review Failed
                     </Button>
                   )}
+                  {activeSessionId && (
+                    <Link href={`/studio/imports/${activeSessionId}`}>
+                      <Button variant="outline" className="border-amber-600/50 text-amber-300 hover:bg-amber-500/10 text-xs">
+                        View Import Session →
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href={`/studio/archive${defaultTripId ? `?trip=${defaultTripId}` : ''}`}>
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-medium text-xs">
+                      Curate in Archive →
+                    </Button>
+                  </Link>
                   <Link href="/studio/media">
-                    <Button className="bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs">
-                      View in Media Manager →
+                    <Button variant="outline" className="border-stone-700 text-stone-300 hover:text-white text-xs">
+                      Media Manager →
                     </Button>
                   </Link>
                   <Button
@@ -1794,6 +1983,29 @@ function ItemDetailModal({
                   <p className="text-[11px] text-stone-300">
                     <strong>Place:</strong> {item.suggestions.suggested_place.reason}
                   </p>
+                )}
+                {item.suggestions.candidatePlaces && item.suggestions.candidatePlaces.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-amber-500/20">
+                    <span className="text-[10px] text-amber-300/80 font-medium block mb-1">
+                      Candidate Proximity Places (Human confirmation required):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.suggestions.candidatePlaces.map((cp) => (
+                        <button
+                          key={cp.place.id}
+                          type="button"
+                          onClick={() => setPlaceId(cp.place.id)}
+                          className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                            placeId === cp.place.id
+                              ? 'bg-amber-500 text-stone-950 border-amber-400 font-semibold'
+                              : 'bg-stone-900 border-stone-700 text-stone-300 hover:border-amber-500/50'
+                          }`}
+                        >
+                          {cp.place.name} ({cp.distanceKm.toFixed(1)} km)
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}

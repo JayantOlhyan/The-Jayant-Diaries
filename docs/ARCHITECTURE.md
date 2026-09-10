@@ -280,7 +280,47 @@ CURATION HANDOFF (/studio/archive?trip=...)
 
 ---
 
-## 12. Backup & Disaster Recovery Strategy
+## 12. Archive Backup, Export & Portability Strategy (Phase 12)
+
+Phase 12 establishes a comprehensive, deterministic, machine-readable export and restore pipeline designed to protect *The Jayant Diaries* against data loss and vendor lock-in.
+
+```text
+ARCHIVE DATABASE & METADATA
+       ↓
+[1] EXPORT SERVICE
+    • Collects complete relational collections (Trips, Days, Places, Memories, Media, Stories, Tags, Imports)
+    • Generates Manifest (v1) & SHA-256 Checksums dictionary
+    • Sanitizes objects to guarantee ZERO secret or credential leakage
+       ↓
+[2] PORTABLE ARCHIVE SNAPSHOT (JSON / ZIP)
+       ↓
+[3] VERIFICATION SERVICE (Pre-Validation Gate)
+    • Validates Format ("the-jayant-diaries-archive") & Version (v1)
+    • Verifies SHA-256 integrity checksums for all entity files
+    • Audits foreign-key references & computes conflict metrics
+       ↓
+[4] RESTORE SERVICE
+    • NEW_ONLY Mode: Inserts unrecorded entities without overwriting existing data
+    • MERGE Mode: Safely merges missing attributes into existing records
+    • Transactional safety: Aborts on invalid checksums or malformed records
+```
+
+### Key Components & Invariants
+1. **Portable Manifest Format**:
+   - Manifest header specifies format (`the-jayant-diaries-archive`), version (`1`), ISO timestamp, schema version, checksum algorithm (`sha256`), and exact entity record counts.
+2. **Cryptographic Integrity Validation**:
+   - SHA-256 hash generated for every entity payload (`trips.json`, `days.json`, `places.json`, `memories.json`, `media.json`, `stories.json`, `tags.json`, `import_sessions.json`, `import_session_items.json`).
+   - The Pre-Validation Gate enforces checksum matching prior to any database mutation.
+3. **Secret Leakage Prevention**:
+   - Exports strictly exclude Supabase service role keys, database connection strings, environment tokens, `.env` variables, and temporary signed storage URLs.
+4. **Privacy & Visibility Integrity**:
+   - `visibility = 'PRIVATE'` assets remain private during export and restore. `status = 'DRAFT'` records remain drafts. Restore never escalates visibility or publication state.
+5. **Studio Interface Route**:
+   - `/studio/archive/export`: Minimal, restrained Studio UI providing instant export downloads, file pre-validation, conflict reports, mode selection (`New Records Only` vs `Merge`), and explicit restoration confirmation.
+
+---
+
+## 13. Backup & Disaster Recovery Strategy
 
 Because this is a permanent lifetime archive:
 1. **Database**: Nightly automated logical backups via Supabase + point-in-time recovery (PITR). An export script (`npm run archive:export`) dumps canonical JSON schemas and journals.

@@ -3,9 +3,19 @@
 import { revalidatePath } from 'next/cache';
 import { MediaRepository } from '@/server/repositories/media-repository';
 import { ContentReference, MediaRow } from '@/types/entities';
+import { verifyStudioAuth } from '@/lib/auth/server';
 
 export async function addMediaReferenceAction(reference: ContentReference) {
   try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!reference || !reference.type) {
+      return { success: false, error: 'Valid media reference payload is required' };
+    }
+
     const created = await MediaRepository.createMediaReference(reference);
 
     if (reference.trip_id) {
@@ -24,7 +34,16 @@ export async function addMediaReferenceAction(reference: ContentReference) {
 
 export async function updateMediaAction(id: string, payload: Partial<MediaRow>) {
   try {
-    const updated = await MediaRepository.updateMedia(id, payload);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid media ID is required' };
+    }
+
+    const updated = await MediaRepository.updateMedia(id.trim(), payload);
     if (!updated) {
       return { success: false, error: 'Media not found' };
     }
@@ -44,7 +63,16 @@ export async function updateMediaAction(id: string, payload: Partial<MediaRow>) 
 
 export async function deleteMediaAction(id: string, tripId?: string | null) {
   try {
-    const success = await MediaRepository.deleteMedia(id);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid media ID is required' };
+    }
+
+    const success = await MediaRepository.deleteMedia(id.trim());
     if (!success) {
       return { success: false, error: 'Failed to delete media' };
     }
@@ -65,7 +93,17 @@ export async function deleteMediaAction(id: string, tripId?: string | null) {
 
 export async function reorderMediaAction(orderedIds: string[], tripId?: string | null) {
   try {
-    const success = await MediaRepository.reorderMedia(orderedIds);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return { success: false, error: 'Ordered IDs array is required' };
+    }
+
+    const cleanIds = orderedIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean);
+    const success = await MediaRepository.reorderMedia(cleanIds);
     if (!success) {
       return { success: false, error: 'Failed to reorder media' };
     }
@@ -88,7 +126,24 @@ export async function setCoverMediaAction(
   mediaId: string
 ) {
   try {
-    const success = await MediaRepository.setCoverMedia(entityType, entityId, mediaId);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!['trip', 'day', 'place'].includes(entityType)) {
+      return { success: false, error: 'Invalid entity type. Must be trip, day, or place' };
+    }
+
+    if (!entityId || typeof entityId !== 'string' || entityId.trim() === '') {
+      return { success: false, error: 'Valid entity ID is required' };
+    }
+
+    if (!mediaId || typeof mediaId !== 'string' || mediaId.trim() === '') {
+      return { success: false, error: 'Valid media ID is required' };
+    }
+
+    const success = await MediaRepository.setCoverMedia(entityType, entityId.trim(), mediaId.trim());
     if (!success) {
       return { success: false, error: `Failed to set cover media for ${entityType}` };
     }

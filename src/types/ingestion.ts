@@ -50,6 +50,12 @@ export interface IngestionSuggestions {
     distanceKm: number;
     reason: string;
   } | null;
+  candidatePlaces?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    distanceKm: number;
+  }>;
 }
 
 export interface ImportItem {
@@ -130,6 +136,8 @@ export interface ArchiveBatchItemInput {
   thumbnail_url?: string;
   overrideDuplicate?: boolean;
   override_duplicate?: boolean;
+  sessionId?: string | null;
+  session_id?: string | null;
 }
 
 export interface ArchiveItemResult {
@@ -140,6 +148,7 @@ export interface ArchiveItemResult {
   mediaId?: string;
   storagePath?: string;
   storageUrl?: string;
+  sessionId?: string;
   reason?: string;
   error?: string;
 }

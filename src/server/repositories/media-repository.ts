@@ -7,6 +7,7 @@ export type MediaInsert = Database['public']['Tables']['media']['Insert'];
 export type MediaUpdate = Database['public']['Tables']['media']['Update'];
 
 let inMemoryMedia: MediaRow[] = [...SEED_MEDIA];
+let simulateInsertFailure = false;
 
 export class MediaRepository {
   /**
@@ -14,6 +15,14 @@ export class MediaRepository {
    */
   static _resetInMemoryMedia(): void {
     inMemoryMedia = [...SEED_MEDIA];
+    simulateInsertFailure = false;
+  }
+
+  /**
+   * Test hook to simulate database insertion failure for failure-safety testing.
+   */
+  static _setSimulateInsertFailure(simulate: boolean): void {
+    simulateInsertFailure = simulate;
   }
 
   /**
@@ -565,6 +574,10 @@ export class MediaRepository {
    * Batch creates canonical media records with validation.
    */
   static async batchCreateMedia(inserts: MediaInsert[]): Promise<MediaRow[]> {
+    if (simulateInsertFailure) {
+      throw new Error('Database write failure: simulated database write error');
+    }
+
     const created: MediaRow[] = [];
     const now = new Date().toISOString();
 

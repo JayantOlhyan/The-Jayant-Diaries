@@ -542,7 +542,7 @@ export class MediaRepository {
         .in('content_hash', hashes);
 
       if (!error && data) {
-        for (const row of data) {
+        for (const row of (data as any[])) {
           if (row.content_hash) {
             result[row.content_hash] = row.id;
           }
@@ -578,7 +578,7 @@ export class MediaRepository {
         storage_path: insert.storage_path,
         storage_url: insert.storage_url,
         thumbnail_url: insert.thumbnail_url || null,
-        type: insert.type,
+        type: insert.type || 'PHOTO',
         mime_type: insert.mime_type,
         width: insert.width || null,
         height: insert.height || null,

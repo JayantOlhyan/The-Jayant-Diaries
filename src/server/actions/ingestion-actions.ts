@@ -6,7 +6,7 @@ import { MediaRepository, MediaInsert } from '@/server/repositories/media-reposi
 import { TripRepository } from '@/server/repositories/trip-repository';
 import { PlaceRepository } from '@/server/repositories/place-repository';
 import { DayRepository } from '@/server/repositories/day-repository';
-import { StorageService } from '@/server/storage/storage-service';
+import { StorageService } from '@/lib/storage/storage-service';
 import { verifyStudioAuth } from '@/lib/auth/server';
 import { isValidCoordinate } from '@/lib/validation/coordinates';
 import {

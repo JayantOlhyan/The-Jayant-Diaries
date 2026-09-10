@@ -65,54 +65,65 @@ export async function archiveApprovedMediaBatchAction(
         longitude = item.longitude;
       }
 
+      const tripId = item.tripId || item.trip_id;
+      const dayId = item.dayId || item.day_id;
+      const placeId = item.placeId || item.place_id;
+
       // Reference validation
-      if (item.trip_id) {
-        const trip = await TripRepository.getTripById(item.trip_id);
+      if (tripId) {
+        const trip = await TripRepository.getTripById(tripId);
         if (!trip) {
-          throw new Error(`Referenced trip ID ${item.trip_id} not found in archive`);
+          throw new Error(`Referenced trip ID ${tripId} not found in archive`);
         }
-        affectedTripIds.add(item.trip_id);
+        affectedTripIds.add(tripId);
       }
 
-      if (item.day_id) {
-        const day = await DayRepository.getDayById(item.day_id);
+      if (dayId) {
+        const day = await DayRepository.getDayById(dayId);
         if (!day) {
-          throw new Error(`Referenced day ID ${item.day_id} not found in archive`);
+          throw new Error(`Referenced day ID ${dayId} not found in archive`);
         }
       }
 
-      if (item.place_id) {
-        const place = await PlaceRepository.getPlaceById(item.place_id);
+      if (placeId) {
+        const place = await PlaceRepository.getPlaceById(placeId);
         if (!place) {
-          throw new Error(`Referenced place ID ${item.place_id} not found in archive`);
+          throw new Error(`Referenced place ID ${placeId} not found in archive`);
         }
       }
 
-      const mediaId = crypto.randomUUID();
-      const storagePath = item.storage_path || `media/${mediaId}/original`;
-      const storageUrl = item.storage_url || `/uploads/${item.filename}`;
+      const mediaId = item.id || crypto.randomUUID();
+      const storagePath = item.storagePath || item.storage_path || `media/${mediaId}/original`;
+      const storageUrl = item.storageUrl || item.storage_url || `/uploads/${item.filename}`;
+      const mimeType = item.mimeType || item.mime_type || 'image/jpeg';
+      const fileSizeBytes = item.fileSizeBytes ?? item.file_size_bytes ?? null;
+      const contentHash = item.contentHash || item.content_hash || null;
+      const takenAt = item.takenAt || item.taken_at || null;
+      const altText = item.altText || item.alt_text || null;
+      const rawType = item.type || 'PHOTO';
+      const mediaType = (rawType === 'IMAGE' ? 'PHOTO' : rawType) as any;
 
       inserts.push({
         id: mediaId,
         filename: item.filename,
         storage_path: storagePath,
         storage_url: storageUrl,
-        thumbnail_url: item.thumbnail_url || storageUrl,
-        type: item.type,
-        mime_type: item.mime_type,
+        thumbnail_url: item.thumbnailUrl || item.thumbnail_url || storageUrl,
+        type: mediaType,
+        mime_type: mimeType,
         width: item.width || null,
         height: item.height || null,
         duration: item.duration || null,
-        file_size_bytes: item.file_size_bytes || null,
-        content_hash: item.content_hash || null,
-        taken_at: item.taken_at || null,
+        file_size_bytes: fileSizeBytes,
+        content_hash: contentHash,
+        taken_at: takenAt,
         latitude,
         longitude,
-        trip_id: item.trip_id || null,
-        day_id: item.day_id || null,
-        place_id: item.place_id || null,
+        trip_id: tripId || null,
+        day_id: dayId || null,
+        place_id: placeId || null,
         caption: item.caption || null,
-        alt_text: item.alt_text || null,
+        alt_text: altText,
         // Strict invariant: All new archive media is PRIVATE by default
         visibility: 'PRIVATE',
       });
@@ -135,13 +146,19 @@ export async function archiveApprovedMediaBatchAction(
     return {
       success: true,
       count: created.length,
+      archivedCount: created.length,
+      failedCount: 0,
       createdIds: created.map((m) => m.id),
+      errors: [],
     };
   } catch (error: any) {
     return {
       success: false,
       count: 0,
+      archivedCount: 0,
+      failedCount: batch.length,
       createdIds: [],
+      errors: [{ filename: 'batch', reason: error.message || 'Failed to archive media batch' }],
       error: error.message || 'Failed to archive media batch',
     };
   }

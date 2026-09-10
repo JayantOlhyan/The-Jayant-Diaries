@@ -20,22 +20,7 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
   };
 }
 
-const PLACE_IMAGES: Record<string, string> = {
-  leh: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80',
-  'magnetic-hill': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80',
-  'nubra-valley': 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=600&auto=format&fit=crop&q=80',
-  'khardung-la': 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&auto=format&fit=crop&q=80',
-  'pangong-lake': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80',
-};
 
-const STORY_IMAGES: Record<string, string> = {
-  'mem11111-1111-4111-a111-111111111111':
-    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600&auto=format&fit=crop&q=80',
-  'mem22222-2222-4222-a222-222222222222':
-    'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80',
-  'mem33333-3333-4333-a333-333333333333':
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80',
-};
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q = '', filter = 'ALL' } = await searchParams;
@@ -215,7 +200,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                       <div className="flex items-center gap-4">
                         <div className="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-neutral-900">
                           <ImageFrame
-                            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80"
+                            src=""
                             alt={trip.title}
                             fill
                           />
@@ -254,9 +239,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {results.places.map((place) => {
-                    const cover =
-                      PLACE_IMAGES[place.slug] ||
-                      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80';
+                    const cover = '';
                     return (
                       <Link
                         key={place.id}
@@ -304,9 +287,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {results.stories.map((story) => {
-                    const cover =
-                      STORY_IMAGES[story.id] ||
-                      'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&auto=format&fit=crop&q=80';
+                    const cover = '';
                     return (
                       <Link
                         key={story.id}

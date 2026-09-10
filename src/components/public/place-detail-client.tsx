@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, MapPin, Compass, Mountain, BookOpen, Camera, Film } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Compass, BookOpen, Camera, Film } from 'lucide-react';
 import { PlaceRow, TripRow, MemoryRow, MediaRow } from '@/types/entities';
 import { ImageFrame } from '@/components/ui/image-frame';
 import { ImageGallery } from '@/components/media/image-gallery';
@@ -17,41 +17,11 @@ interface PlaceDetailClientProps {
 
 type TabKey = 'overview' | 'journeys' | 'stories' | 'media';
 
-const PLACE_COVERS: Record<string, string> = {
-  leh: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop&q=80',
-  'magnetic-hill': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop&q=80',
-  'nubra-valley': 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1200&auto=format&fit=crop&q=80',
-  'khardung-la': 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1200&auto=format&fit=crop&q=80',
-  'pangong-lake': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
-};
-
-const ELEVATIONS: Record<string, string> = {
-  'pangong-lake': '4,350 m',
-  'khardung-la': '5,359 m',
-  'nubra-valley': '3,048 m',
-  leh: '3,500 m',
-  'magnetic-hill': '3,350 m',
-};
-
-const STORY_COVERS: Record<string, string> = {
-  'mem11111-1111-4111-a111-111111111111':
-    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600&auto=format&fit=crop&q=80',
-  'mem22222-2222-4222-a222-222222222222':
-    'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80',
-  'mem33333-3333-4333-a333-333333333333':
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80',
-};
-
 export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDetailClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
-  const coverImage =
-    PLACE_COVERS[place.slug] ||
-    media[0]?.storage_url ||
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop&q=80';
-
-  const elevation = ELEVATIONS[place.slug] || '3,200 m';
-  const region = place.state || place.country || 'Ladakh';
+  const coverImage = media[0]?.storage_url || '';
+  const region = place.state || place.country || '';
 
   const photos = media.filter((m) => m.type === 'PHOTO' && !m.filename.startsWith('instagram-'));
 
@@ -87,21 +57,16 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
           </p>
         )}
 
-        {/* Geographic Stat Badges (Matching Spec Panel 5) */}
+        {/* Geographic Stat Badges */}
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
-            <Mountain className="w-3.5 h-3.5 text-amber-500" />
-            <span>
-              <strong className="text-white">{elevation}</strong> Elevation
-            </span>
-          </div>
-
-          <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
-            <Compass className="w-3.5 h-3.5 text-amber-500" />
-            <span>
-              <strong className="text-white">{region}</strong> Region
-            </span>
-          </div>
+          {region && (
+            <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
+              <Compass className="w-3.5 h-3.5 text-amber-500" />
+              <span>
+                <strong className="text-white">{region}</strong> Region
+              </span>
+            </div>
+          )}
 
           {isValidCoordinate(place.latitude, place.longitude) ? (
             <>
@@ -249,7 +214,7 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
                       <div className="flex items-center gap-4">
                         <div className="relative w-20 h-16 rounded-lg overflow-hidden shrink-0 bg-neutral-900">
                           <ImageFrame
-                            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80"
+                            src=""
                             alt={trip.title}
                             fill
                           />
@@ -287,9 +252,7 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
               {stories.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {stories.map((story) => {
-                    const cover =
-                      STORY_COVERS[story.id] ||
-                      'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600&auto=format&fit=crop&q=80';
+                    const cover = '';
                     return (
                       <Link
                         key={story.id}
@@ -357,7 +320,7 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
                   >
                     <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden bg-neutral-900">
                       <ImageFrame
-                        src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500&auto=format&fit=crop&q=80"
+                        src=""
                         alt={trip.title}
                         fill
                         className="group-hover:scale-105 transition-transform duration-500"
@@ -388,9 +351,7 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
             {stories.length > 0 ? (
               <div className="space-y-3">
                 {stories.slice(0, 2).map((story) => {
-                  const cover =
-                    STORY_COVERS[story.id] ||
-                    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=500&auto=format&fit=crop&q=80';
+                  const cover = '';
                   return (
                     <Link
                       key={story.id}

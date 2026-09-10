@@ -149,3 +149,49 @@ export interface InstagramReference {
 }
 
 export type ContentReference = ImageReference | YouTubeReference | InstagramReference;
+
+export interface PublicMapPlace {
+  id: string;
+  name: string;
+  slug: string;
+  city: string | null;
+  state: string | null;
+  country: string;
+  latitude: number;
+  longitude: number;
+  description: string | null;
+  coverMedia: {
+    storage_url: string;
+    thumbnail_url: string | null;
+    alt_text: string | null;
+  } | null;
+  relatedJourneys: {
+    id: string;
+    title: string;
+    slug: string;
+  }[];
+  relatedJourneyCount: number;
+}
+
+export interface StudioGeographicOverview {
+  totalPlaces: number;
+  mappedPlaces: number;
+  unmappedPlaces: number;
+  publicPlacesCount: number;
+  privatePlacesCount: number;
+  places: {
+    id: string;
+    name: string;
+    slug: string;
+    country: string;
+    state: string | null;
+    city: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    hasCoordinates: boolean;
+    visibility: string;
+    status: string;
+    journeyCount: number;
+  }[];
+}
+

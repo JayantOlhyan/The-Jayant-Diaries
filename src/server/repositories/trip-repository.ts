@@ -35,12 +35,14 @@ export class TripRepository {
         .eq('status', 'PUBLISHED')
         .order('start_date', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryTrips.filter((t) => t.visibility === 'PUBLIC' && t.status === 'PUBLISHED');
+      if (error) {
+        console.error('Supabase getPublicTrips error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryTrips.filter((t) => t.visibility === 'PUBLIC' && t.status === 'PUBLISHED');
+      return data || [];
+    } catch (err: any) {
+      console.error('getPublicTrips exception:', err?.message);
+      return [];
     }
   }
 
@@ -61,11 +63,11 @@ export class TripRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryTrips.find((t) => t.slug === slug && t.visibility === 'PUBLIC' && t.status === 'PUBLISHED') || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryTrips.find((t) => t.slug === slug && t.visibility === 'PUBLIC' && t.status === 'PUBLISHED') || null;
+      return null;
     }
   }
 
@@ -222,12 +224,14 @@ export class TripRepository {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryTrips;
+      if (error) {
+        console.error('Supabase getAllStudioTrips error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryTrips;
+      return data || [];
+    } catch (err: any) {
+      console.error('getAllStudioTrips exception:', err?.message);
+      return [];
     }
   }
 
@@ -253,11 +257,11 @@ export class TripRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryTrips.find((t) => t.id === id) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryTrips.find((t) => t.id === id) || null;
+      return null;
     }
   }
 

@@ -18,16 +18,21 @@ import { formatDate } from '@/lib/utils';
  * NEVER infers relationships from filename text or captions.
  */
 export function generateSuggestions(
-  metadata: ExtractedMediaMetadata,
+  metadata: ExtractedMediaMetadata | any,
   trips: TripRow[],
   days: DayRow[],
   places: PlaceRow[]
-): IngestionSuggestions {
+): IngestionSuggestions & {
+  suggested_trip?: { trip: TripRow; confidence: string; reason: string } | null;
+  suggested_day?: { day: DayRow; confidence: string; reason: string } | null;
+  suggested_place?: { place: PlaceRow; distance_km: number; reason: string } | null;
+} {
   let suggestedTrip: IngestionSuggestions['suggestedTrip'] = null;
   let suggestedDay: IngestionSuggestions['suggestedDay'] = null;
   let suggestedPlace: IngestionSuggestions['suggestedPlace'] = null;
 
-  const captureDate = metadata.takenAt ? metadata.takenAt.slice(0, 10) : null;
+  const rawTakenAt = metadata?.takenAt || metadata?.taken_at;
+  const captureDate = rawTakenAt ? String(rawTakenAt).slice(0, 10) : null;
 
   // 1. Trip Suggestion: Based strictly on date range match
   if (captureDate) {
@@ -67,20 +72,18 @@ export function generateSuggestions(
   }
 
   // 3. Place Suggestion: Based strictly on GPS proximity (threshold: 15 km)
-  if (
-    metadata.hasGps &&
-    metadata.latitude !== null &&
-    metadata.longitude !== null &&
-    isValidCoordinate(metadata.latitude, metadata.longitude)
-  ) {
+  const lat = metadata?.latitude ?? metadata?.gps?.latitude;
+  const lng = metadata?.longitude ?? metadata?.gps?.longitude;
+
+  if (lat != null && lng != null && isValidCoordinate(lat, lng)) {
     let closestPlace: PlaceRow | null = null;
     let minDistance = Infinity;
 
     for (const place of places) {
       if (isValidCoordinate(place.latitude, place.longitude)) {
         const dist = calculateDistanceKm(
-          metadata.latitude,
-          metadata.longitude,
+          lat,
+          lng,
           place.latitude as number,
           place.longitude as number
         );
@@ -103,11 +106,73 @@ export function generateSuggestions(
     }
   }
 
+  const matchedTripRow = suggestedTrip ? trips.find((t) => t.id === suggestedTrip.id) : null;
+  const matchedDayRow = suggestedDay ? days.find((d) => d.id === suggestedDay.id) : null;
+  const matchedPlaceRow = suggestedPlace ? places.find((p) => p.id === suggestedPlace.id) : null;
+
   return {
     suggestedTrip,
     suggestedDay,
     suggestedPlace,
+    suggested_trip: matchedTripRow
+      ? { trip: matchedTripRow, confidence: 'HIGH', reason: suggestedTrip!.reason }
+      : null,
+    suggested_day: matchedDayRow
+      ? { day: matchedDayRow, confidence: 'HIGH', reason: suggestedDay!.reason }
+      : null,
+    suggested_place: matchedPlaceRow
+      ? {
+          place: matchedPlaceRow,
+          distance_km: suggestedPlace!.distanceKm,
+          reason: suggestedPlace!.reason,
+        }
+      : null,
   };
+}
+
+/**
+ * Groups items chronologically by capture date, with item objects attached.
+ * Undated items are collected at the end under 'undated'.
+ */
+export function groupItemsByDate<T extends { id: string; metadata?: any }>(
+  items: T[]
+): { dateKey: string; dateLabel: string; displayDate: string; items: T[] }[] {
+  const map = new Map<string, { dateKey: string; dateLabel: string; displayDate: string; items: T[] }>();
+
+  for (const item of items) {
+    const rawDate = item.metadata?.takenAt || item.metadata?.taken_at;
+    let dateKey = 'undated';
+    let dateLabel = 'Undated Media';
+
+    if (rawDate) {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        dateKey = d.toISOString().slice(0, 10);
+        dateLabel = formatDate(dateKey);
+      }
+    }
+
+    if (!map.has(dateKey)) {
+      map.set(dateKey, {
+        dateKey,
+        dateLabel,
+        displayDate: dateLabel,
+        items: [],
+      });
+    }
+
+    map.get(dateKey)!.items.push(item);
+  }
+
+  const result = Array.from(map.values());
+  // Sort descending by dateKey, with undated at the end
+  result.sort((a, b) => {
+    if (a.dateKey === 'undated') return 1;
+    if (b.dateKey === 'undated') return -1;
+    return b.dateKey.localeCompare(a.dateKey);
+  });
+
+  return result;
 }
 
 /**
@@ -122,9 +187,10 @@ export function groupMediaByDate(items: ImportItem[]): DateGroupSummary[] {
     let displayDate = 'Unknown Date';
     let timeStr: string | null = null;
 
-    if (item.metadata?.takenAt) {
+    const rawDate = item.metadata?.takenAt || (item.metadata as any)?.taken_at;
+    if (rawDate) {
       try {
-        const d = new Date(item.metadata.takenAt);
+        const d = new Date(rawDate);
         if (!isNaN(d.getTime())) {
           dateKey = d.toISOString().slice(0, 10);
           displayDate = formatDate(dateKey);

@@ -1990,18 +1990,19 @@ function ItemDetailModal({
                       Candidate Proximity Places (Human confirmation required):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {item.suggestions.candidatePlaces.map((cp) => (
+                      {item.suggestions.candidatePlaces.map(
+                        (cp: { id: string; name: string; slug: string; distanceKm: number }) => (
                         <button
-                          key={cp.place.id}
+                          key={cp.id}
                           type="button"
-                          onClick={() => setPlaceId(cp.place.id)}
+                          onClick={() => setPlaceId(cp.id)}
                           className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-                            placeId === cp.place.id
+                            placeId === cp.id
                               ? 'bg-amber-500 text-stone-950 border-amber-400 font-semibold'
                               : 'bg-stone-900 border-stone-700 text-stone-300 hover:border-amber-500/50'
                           }`}
                         >
-                          {cp.place.name} ({cp.distanceKm.toFixed(1)} km)
+                          {cp.name} ({cp.distanceKm.toFixed(1)} km)
                         </button>
                       ))}
                     </div>

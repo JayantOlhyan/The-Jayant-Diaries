@@ -128,14 +128,31 @@ export interface ArchiveBatchItemInput {
   storage_path?: string;
   thumbnailUrl?: string;
   thumbnail_url?: string;
+  overrideDuplicate?: boolean;
+  override_duplicate?: boolean;
+}
+
+export interface ArchiveItemResult {
+  itemId?: string;
+  filename: string;
+  success: boolean;
+  status: 'ARCHIVED' | 'DUPLICATE' | 'FAILED';
+  mediaId?: string;
+  storagePath?: string;
+  storageUrl?: string;
+  reason?: string;
+  error?: string;
 }
 
 export interface ArchiveBatchResult {
   success: boolean;
   count?: number;
+  total?: number;
   archivedCount: number;
+  duplicateCount?: number;
   failedCount: number;
   createdIds?: string[];
+  items?: ArchiveItemResult[];
   errors: { itemId?: string; filename?: string; reason: string }[];
   error?: string;
 }

@@ -21,6 +21,10 @@ export class ImportSessionRepository {
     inMemorySessionItems = [];
   }
 
+  static _resetInMemoryStore(): void {
+    this._resetInMemorySessions();
+  }
+
   /**
    * Access in-memory sessions (useful for tests).
    */

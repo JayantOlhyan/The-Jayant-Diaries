@@ -197,4 +197,76 @@ export interface StudioGeographicOverview {
 
 export * from './ingestion';
 
+export type { CurationStatus } from './database';
 
+export interface ArchiveHealthStats {
+  totalMedia: number;
+  needsReview: number;
+  missingMetadata: number;
+  unassigned: number;
+  duplicates: number;
+  readyToPublish: number;
+  privateCount: number;
+  publishedCount: number;
+
+  // Snake_case aliases
+  total_media?: number;
+  needs_review?: number;
+  missing_metadata?: number;
+  ready?: number;
+  private_count?: number;
+  published_count?: number;
+}
+
+export interface MediaReadiness {
+  isReady: boolean;
+  missingFields: string[];
+  reasons: string[];
+  curationStatus?: import('./database').CurationStatus;
+  visibility?: VisibilityType;
+
+  // Snake_case aliases
+  is_ready?: boolean;
+}
+
+export interface CurationQueueItem {
+  media: MediaRow;
+  readiness: MediaReadiness;
+  tripTitle?: string | null;
+  dayTitle?: string | null;
+  placeName?: string | null;
+  isDuplicate?: boolean;
+  duplicateCount?: number;
+}
+
+export interface DuplicateGroup {
+  contentHash: string;
+  canonicalMedia: MediaRow;
+  duplicateMedia: MediaRow[];
+  totalCount: number;
+
+  // Snake_case aliases
+  content_hash?: string;
+  items?: MediaRow[];
+}
+
+export interface CurationFilter {
+  search?: string;
+  search_query?: string;
+  status?: 'ALL' | import('./database').CurationStatus;
+  curation_status?: 'ALL' | import('./database').CurationStatus;
+  missingMetadata?: boolean;
+  unassignedTrip?: boolean;
+  unassignedDay?: boolean;
+  unassignedPlace?: boolean;
+  tripId?: string;
+  trip_id?: string;
+  day_id?: string;
+  place_id?: string;
+  visibility?: 'ALL' | VisibilityType;
+  type?: 'ALL' | MediaType;
+  missing_field?: 'ALL' | 'DATE' | 'DIMENSIONS' | 'TRIP' | 'DAY' | 'PLACE' | 'UNASSIGNED';
+  only_duplicates?: boolean;
+  only_needs_review?: boolean;
+  sort_by?: 'NEEDS_REVIEW_FIRST' | 'NEWEST_IMPORTED' | 'OLDEST_IMPORTED' | 'CAPTURED_DATE' | 'FILENAME';
+}

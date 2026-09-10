@@ -6,7 +6,7 @@ import { TripRepository } from '../trip-repository';
 import { DayRepository } from '../day-repository';
 import { PlaceRepository } from '../place-repository';
 import { SearchRepository } from '../search-repository';
-import { StorageService } from '@/lib/storage/storage-service';
+import { StorageService, StorageConfigurationError } from '@/lib/storage/storage-service';
 import {
   checkExistingDuplicatesAction,
   archiveApprovedMediaBatchAction,
@@ -662,6 +662,76 @@ describe('Phase 7 & 7.1: Smart Archive Ingestion & Remediation', () => {
       expect(result.success).toBe(false);
       expect(result.status).toBe('FAILED');
       expect(result.reason).toContain('not found in archive');
+    });
+  });
+
+  describe('11. Storage Simulator Environment Gate Regression Tests', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      (process.env as any).NODE_ENV = originalNodeEnv;
+    });
+
+    it('allows in-memory storage simulator when NODE_ENV === "test" and Supabase is unavailable', async () => {
+      (process.env as any).NODE_ENV = 'test';
+      const uploadRes = await StorageService.upload({
+        mediaId: 'test-sim-001',
+        fileBuffer: Buffer.from('test binary content'),
+        mimeType: 'image/jpeg',
+        extension: 'jpg',
+      });
+
+      expect(uploadRes.storagePath).toBe('media/test-sim-001/original.jpg');
+      expect(StorageService._hasStoredObject('media/test-sim-001/original.jpg')).toBe(true);
+    });
+
+    it('throws StorageConfigurationError when NODE_ENV === "development" and Supabase is unavailable', async () => {
+      (process.env as any).NODE_ENV = 'development';
+      await expect(
+        StorageService.upload({
+          mediaId: 'test-dev-001',
+          fileBuffer: Buffer.from('dev binary content'),
+          mimeType: 'image/jpeg',
+          extension: 'jpg',
+        })
+      ).rejects.toThrow(StorageConfigurationError);
+
+      await expect(
+        StorageService.upload({
+          mediaId: 'test-dev-001',
+          fileBuffer: Buffer.from('dev binary content'),
+          mimeType: 'image/jpeg',
+          extension: 'jpg',
+        })
+      ).rejects.toThrow('Supabase Storage is not configured');
+    });
+
+    it('throws StorageConfigurationError when NODE_ENV === "production" and Supabase is unavailable', async () => {
+      (process.env as any).NODE_ENV = 'production';
+      await expect(
+        StorageService.upload({
+          mediaId: 'test-prod-001',
+          fileBuffer: Buffer.from('prod binary content'),
+          mimeType: 'image/jpeg',
+          extension: 'jpg',
+        })
+      ).rejects.toThrow(StorageConfigurationError);
+
+      await expect(
+        StorageService.upload({
+          mediaId: 'test-prod-001',
+          fileBuffer: Buffer.from('prod binary content'),
+          mimeType: 'image/jpeg',
+          extension: 'jpg',
+        })
+      ).rejects.toThrow('Supabase Storage is not configured');
+    });
+
+    it('refuses to create signed URLs when outside test environment and Supabase is unavailable', async () => {
+      (process.env as any).NODE_ENV = 'production';
+      await expect(
+        StorageService.createSignedUrl('media/test/original.jpg')
+      ).rejects.toThrow(StorageConfigurationError);
     });
   });
 });

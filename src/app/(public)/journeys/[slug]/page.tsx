@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: JourneyPageProps): Promise<Me
 
   return {
     title: `${trip.title} — The Jayant Diaries`,
-    description: trip.description || `Cinematic travel chronicle for ${trip.title}`,
+    description: trip.description || undefined,
   };
 }
 

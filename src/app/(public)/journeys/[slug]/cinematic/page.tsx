@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: CinematicPageProps): Promise<
 
   return {
     title: `${journey.trip.title} (Cinematic Experience) — The Jayant Diaries`,
-    description: journey.trip.description || `Immersive chronological cinematic experience for ${journey.trip.title}`,
+    description: journey.trip.description || undefined,
     robots: {
       index: false,
       follow: true,

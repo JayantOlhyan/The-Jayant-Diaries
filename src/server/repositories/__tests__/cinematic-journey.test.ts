@@ -436,5 +436,21 @@ describe('Phase 5: Cinematic Journey Mode', () => {
         expect(journey.days[i].day_number).toBeLessThan(journey.days[i + 1].day_number);
       }
     });
+
+    it('generates truthful metadata and leaves description undefined when trip has null description', async () => {
+      await TripRepository.createTrip({
+        title: 'Undescribed Journey',
+        slug: 'undescribed-journey',
+        description: null,
+        visibility: 'PUBLIC',
+        status: 'PUBLISHED',
+      });
+
+      const { generateMetadata } = await import('@/app/(public)/journeys/[slug]/cinematic/page');
+      const metadata = await generateMetadata({ params: Promise.resolve({ slug: 'undescribed-journey' }) });
+
+      expect(metadata.title).toBe('Undescribed Journey (Cinematic Experience) — The Jayant Diaries');
+      expect(metadata.description).toBeUndefined();
+    });
   });
 });

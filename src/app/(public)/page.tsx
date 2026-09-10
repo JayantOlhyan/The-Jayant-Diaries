@@ -28,82 +28,62 @@ export default async function HomePage() {
   const featuredTrip = publicTrips.find((t) => t.featured) || publicTrips[0];
   const featuredTripDetails = featuredTrip ? await TripRepository.getTripWithDetails(featuredTrip.id) : null;
 
-  // Hero image (Pangong Lake at sunset or first public landscape)
+  // Hero image
   const heroMedia =
-    publicMedia.find((m) => m.caption?.toLowerCase().includes('pangong') || m.filename?.includes('pangong')) ||
+    publicMedia.find((m) => m.type === 'PHOTO' && (m.caption?.toLowerCase().includes('pangong') || m.filename?.includes('pangong'))) ||
+    publicMedia.find((m) => m.type === 'PHOTO') ||
     publicMedia[0];
   const heroImageUrl = heroMedia
     ? getNormalizedImageUrl(heroMedia.storage_url || heroMedia.thumbnail_url || '')
-    : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80';
+    : '';
 
   // Featured journey image
   const featuredJourneyImage =
     featuredTripDetails?.cover_media?.storage_url ||
     publicMedia.find((m) => m.type === 'PHOTO' && m.id !== heroMedia?.id)?.storage_url ||
-    'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop&q=80';
+    '';
 
-  // Curated Recent Stories (3 items)
-  const stories = [
-    {
-      id: 'story-1',
-      title: 'First Morning in Leh',
-      excerpt: 'A different kind of silence.',
-      photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
-      date: '12 June 2026',
-    },
-    {
-      id: 'story-2',
-      title: 'The Drive to Nubra',
-      excerpt: 'Mountains, roads and perspective.',
-      photo: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=80',
-      date: '13 June 2026',
-    },
-    {
-      id: 'story-3',
-      title: 'Pangong at Sunset',
-      excerpt: 'When the sky meets stillness.',
-      photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
-      date: '14 June 2026',
-    },
-  ];
+  // Recent Stories (from genuine database memories)
+  const stories = allMemories.slice(0, 3).map((mem) => {
+    const memMedia = publicMedia.find((m) => m.memory_id === mem.id);
+    return {
+      id: mem.id,
+      title: mem.title,
+      excerpt: mem.description || mem.journal || '',
+      photo: memMedia?.storage_url || '',
+      date: mem.date
+        ? new Date(mem.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '',
+    };
+  });
 
-  // Curated Places for Home (4 items)
-  const homePlaces = [
-    {
-      name: 'Leh',
-      image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
-      slug: 'leh',
-    },
-    {
-      name: 'Nubra Valley',
-      image: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80',
-      slug: 'nubra-valley',
-    },
-    {
-      name: 'Pangong Lake',
-      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
-      slug: 'pangong-lake',
-    },
-    {
-      name: 'Khardung La',
-      image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop&q=80',
-      slug: 'khardung-la',
-    },
-  ];
+  // Places for Home (from genuine database places)
+  const homePlaces = allPlaces.slice(0, 4).map((place) => {
+    const placeMedia = publicMedia.find((m) => m.place_id === place.id);
+    return {
+      name: place.name,
+      image: placeMedia?.storage_url || '',
+      slug: place.slug,
+    };
+  });
 
   return (
     <div className="space-y-20 sm:space-y-28 pb-24">
       {/* 1. Full-Bleed Cinematic Hero (Matches Reference Spec "Homepage /") */}
       <section className="relative w-full h-[85vh] min-h-[580px] max-h-[920px] flex flex-col justify-between overflow-hidden bg-neutral-950">
         {/* Full-width Photography Background */}
-        <div className="absolute inset-0">
-          <Image
-            src={heroImageUrl}
-            alt="Pangong Lake at sunset, Ladakh"
-            fill
-            priority
-            className="object-cover object-center scale-[1.02] transition-transform duration-1000"
-          />
+        <div className="absolute inset-0 bg-neutral-950">
+          {heroImageUrl ? (
+            <Image
+              src={heroImageUrl}
+              alt="The Jayant Diaries — Travel Archive"
+              fill
+              priority
+              className="object-cover object-center scale-[1.02] transition-transform duration-1000"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-b from-neutral-900 via-neutral-950 to-[#0B0D0E]" />
+          )}
           {/* Subtle vignette and contrast gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0D0E] via-[#0B0D0E]/40 to-black/30" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(11,13,14,0.6)_100%)]" />
@@ -222,90 +202,94 @@ export default async function HomePage() {
       )}
 
       {/* 3. Recent Stories Section (3 Editorial Story Cards) */}
-      <section className="max-w-7xl mx-auto px-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-          <span className="text-xs font-mono uppercase tracking-widest text-neutral-400 font-semibold">
-            Recent Stories
-          </span>
-          <Link
-            href="/stories"
-            className="text-xs font-mono text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
-          >
-            View All Stories
-            <ArrowRight className="w-3 h-3" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stories.map((story) => (
+      {stories.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-400 font-semibold">
+              Recent Stories
+            </span>
             <Link
-              key={story.id}
               href="/stories"
-              className="group flex flex-col space-y-3 rounded-xl overflow-hidden p-3 bg-neutral-900/20 border border-white/[0.06] hover:border-white/20 transition-all duration-300"
+              className="text-xs font-mono text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
             >
-              <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden bg-neutral-950">
-                <ImageFrame
-                  src={story.photo}
-                  alt={story.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-
-              <div className="space-y-1 p-1">
-                <span className="text-[11px] font-mono text-neutral-400">
-                  {story.date}
-                </span>
-                <h3 className="font-serif text-base font-bold text-white group-hover:text-amber-300 transition-colors">
-                  {story.title}
-                </h3>
-                <p className="text-xs text-neutral-400 line-clamp-1 font-sans">
-                  {story.excerpt}
-                </p>
-              </div>
+              View All Stories
+              <ArrowRight className="w-3 h-3" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stories.map((story) => (
+              <Link
+                key={story.id}
+                href="/stories"
+                className="group flex flex-col space-y-3 rounded-xl overflow-hidden p-3 bg-neutral-900/20 border border-white/[0.06] hover:border-white/20 transition-all duration-300"
+              >
+                <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden bg-neutral-950">
+                  <ImageFrame
+                    src={story.photo}
+                    alt={story.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+
+                <div className="space-y-1 p-1">
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {story.date}
+                  </span>
+                  <h3 className="font-serif text-base font-bold text-white group-hover:text-amber-300 transition-colors">
+                    {story.title}
+                  </h3>
+                  <p className="text-xs text-neutral-400 line-clamp-1 font-sans">
+                    {story.excerpt}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 4. Places Section (4 Photographic Cards) */}
-      <section className="max-w-7xl mx-auto px-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-          <span className="text-xs font-mono uppercase tracking-widest text-neutral-400 font-semibold">
-            Places
-          </span>
-          <Link
-            href="/places"
-            className="text-xs font-mono text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
-          >
-            View All Places
-            <ArrowRight className="w-3 h-3" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {homePlaces.map((place) => (
+      {homePlaces.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-400 font-semibold">
+              Places
+            </span>
             <Link
-              key={place.name}
-              href={`/places/${place.slug}`}
-              className="group space-y-2.5 block text-left"
+              href="/places"
+              className="text-xs font-mono text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
             >
-              <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-neutral-950 border border-white/10">
-                <ImageFrame
-                  src={place.image}
-                  alt={place.name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-              </div>
-              <p className="font-serif text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                {place.name}
-              </p>
+              View All Places
+              <ArrowRight className="w-3 h-3" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {homePlaces.map((place) => (
+              <Link
+                key={place.name}
+                href={`/places/${place.slug}`}
+                className="group space-y-2.5 block text-left"
+              >
+                <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-neutral-950 border border-white/10">
+                  <ImageFrame
+                    src={place.image}
+                    alt={place.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+                </div>
+                <p className="font-serif text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                  {place.name}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 5. The Archive Teaser Section */}
       <section className="max-w-7xl mx-auto px-6">

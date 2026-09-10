@@ -639,6 +639,7 @@ export class MediaRepository {
         day_id: insert.day_id || null,
         place_id: insert.place_id || null,
         memory_id: insert.memory_id || null,
+        import_session_id: insert.import_session_id || null,
         caption: insert.caption || null,
         alt_text: insert.alt_text || null,
         position,

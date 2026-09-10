@@ -108,3 +108,26 @@ Ensure the following buckets are configured in the Supabase Dashboard:
 ### Rollback & Disaster Recovery Procedures
 - **Application Rollback**: In Vercel Dashboard → Deployments, select the prior stable deployment SHA and click **Instant Rollback**.
 - **Database Point-In-Time Recovery (PITR)**: In Supabase Dashboard → Settings → Database Backups, initiate PITR restoration to the target timestamp before incident.
+
+---
+
+## 7. Archive Export & Restore Procedures (Phase 12)
+
+### Creating a Manual Portable Archive Snapshot
+1. Navigate to `/studio/archive/export` in the Studio workspace.
+2. Click **Generate & Download Archive Snapshot (.json)**.
+3. The system generates a deterministic, versioned archive containing manifest metadata (`format: the-jayant-diaries-archive`, `version: 1`), SHA-256 entity file checksums, and complete JSON tables.
+4. Store the downloaded `jayant-diaries-archive-YYYY-MM-DD.json` file in secure cold storage.
+
+### Restoring from an Archive Snapshot
+1. Navigate to `/studio/archive/export`.
+2. Under **Archive Verification & Restore**, select the `.json` snapshot file.
+3. Click **Inspect & Verify Archive Integrity**. The Pre-Validation Gate executes:
+   - Verifies manifest format and version.
+   - Computes SHA-256 hashes of entity arrays and validates matching checksums.
+   - Evaluates foreign key relationships and conflict counts.
+4. Select the desired restore mode:
+   - **New Records Only**: Inserts missing entities without modifying existing database rows.
+   - **Merge Records**: Safely updates missing attributes in existing records while inserting missing entities.
+5. Click **Restore Archive** and confirm the prompt.
+

@@ -243,9 +243,14 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-serif text-2xl text-white">Places</h2>
-                  <Link href="/places" className="text-xs font-mono text-neutral-400 hover:text-white">
-                    View directory →
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link href="/map" className="text-xs font-mono text-amber-400 hover:text-amber-300">
+                      Explore on map →
+                    </Link>
+                    <Link href="/places" className="text-xs font-mono text-neutral-400 hover:text-white">
+                      View directory →
+                    </Link>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {results.places.map((place) => {
@@ -267,9 +272,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                           />
                         </div>
                         <div>
-                          <h3 className="font-serif text-base text-white group-hover:text-amber-400 transition-colors">
-                            {place.name}
-                          </h3>
+                          <div className="flex items-center justify-between gap-1">
+                            <h3 className="font-serif text-base text-white group-hover:text-amber-400 transition-colors truncate">
+                              {place.name}
+                            </h3>
+                            {place.latitude && place.longitude && (
+                              <span className="text-[10px] font-mono text-amber-400/90 shrink-0">
+                                Mapped
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs font-mono text-neutral-400 mt-0.5">
                             {place.state || place.country}
                           </p>

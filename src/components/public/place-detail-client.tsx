@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, MapPin, Compass, Mountain, BookOpen, Camera, Fil
 import { PlaceRow, TripRow, MemoryRow, MediaRow } from '@/types/entities';
 import { ImageFrame } from '@/components/ui/image-frame';
 import { ImageGallery } from '@/components/media/image-gallery';
+import { isValidCoordinate } from '@/lib/validation/coordinates';
 
 interface PlaceDetailClientProps {
   place: PlaceRow;
@@ -102,21 +103,28 @@ export function PlaceDetailClient({ place, journeys, stories, media }: PlaceDeta
             </span>
           </div>
 
-          {place.latitude && (
-            <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-amber-500" />
-              <span>
-                <strong className="text-white">{place.latitude.toFixed(2)}° N</strong> Latitude
-              </span>
-            </div>
-          )}
+          {isValidCoordinate(place.latitude, place.longitude) ? (
+            <>
+              <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                <span>
+                  <strong className="text-white">{(place.latitude as number).toFixed(2)}° N</strong>,{' '}
+                  <strong className="text-white">{(place.longitude as number).toFixed(2)}° E</strong>
+                </span>
+              </div>
 
-          {place.longitude && (
-            <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-mono text-neutral-300 flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-amber-500" />
-              <span>
-                <strong className="text-white">{place.longitude.toFixed(2)}° E</strong> Longitude
-              </span>
+              <Link
+                href="/map"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400/50 text-xs font-mono uppercase tracking-wider transition-all"
+              >
+                <Compass className="w-3.5 h-3.5 text-amber-400" />
+                <span>View on Map →</span>
+              </Link>
+            </>
+          ) : (
+            <div className="px-3.5 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-xs font-mono text-neutral-500 flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5 text-neutral-600" />
+              <span>Coordinates not recorded</span>
             </div>
           )}
         </div>

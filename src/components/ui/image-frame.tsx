@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getNormalizedImageUrl, FALLBACK_IMAGE_URL } from "@/lib/utils/image-provider";
+import { getNormalizedImageUrl } from "@/lib/utils/image-provider";
 
 export interface ImageFrameProps {
   src: string;
@@ -35,7 +36,8 @@ export function ImageFrame({
     "21/9": "aspect-[21/9]",
   };
 
-  const imageSrc = hasError ? FALLBACK_IMAGE_URL : getNormalizedImageUrl(src);
+  const imageSrc = getNormalizedImageUrl(src);
+  const isUnavailable = hasError || !imageSrc;
 
   return (
     <div
@@ -46,34 +48,35 @@ export function ImageFrame({
       )}
     >
       {/* Loading Skeleton */}
-      {!isLoaded && !hasError && (
+      {!isLoaded && !isUnavailable && (
         <div className="absolute inset-0 bg-zinc-900 animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-zinc-700 border-t-transparent animate-spin" />
         </div>
       )}
 
-      <Image
-        src={imageSrc}
-        alt={alt || "Travel photograph"}
-        fill
-        priority={priority}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 60vw"
-        onLoad={() => setIsLoaded(true)}
-        onError={() => {
-          if (!hasError) setHasError(true);
-        }}
-        className={cn(
-          "object-cover transition-opacity duration-300",
-          !isLoaded && "opacity-0",
-          isLoaded && "opacity-100",
-          imageClassName
-        )}
-      />
-
-      {hasError && (
-        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm text-[10px] text-zinc-400">
-          Archived fallback
+      {isUnavailable ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/80 text-zinc-500 select-none p-3 text-center">
+          <Camera className="w-6 h-6 stroke-[1.2] mb-1 opacity-50" />
+          <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500">Media Unavailable</span>
         </div>
+      ) : (
+        <Image
+          src={imageSrc}
+          alt={alt || "Travel photograph"}
+          fill
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 60vw"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => {
+            if (!hasError) setHasError(true);
+          }}
+          className={cn(
+            "object-cover transition-opacity duration-300",
+            !isLoaded && "opacity-0",
+            isLoaded && "opacity-100",
+            imageClassName
+          )}
+        />
       )}
     </div>
   );

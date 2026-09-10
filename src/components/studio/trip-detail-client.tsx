@@ -42,9 +42,7 @@ export function TripDetailClient({ trip, allPlaces }: TripDetailClientProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = React.useState(false);
   const [selectedMediaForEdit, setSelectedMediaForEdit] = React.useState<MediaRow | null>(null);
 
-  const coverUrl =
-    trip.cover_media?.storage_url ||
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80';
+  const coverUrl = trip.cover_media?.storage_url || '';
 
   const dateSpan =
     trip.start_date && trip.end_date

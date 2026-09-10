@@ -47,12 +47,14 @@ export class PlaceRepository {
         .select('*')
         .order('name', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryPlaces;
+      if (error) {
+        console.error('Supabase getAllPlaces error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryPlaces;
+      return data || [];
+    } catch (err: any) {
+      console.error('getAllPlaces exception:', err?.message);
+      return [];
     }
   }
 
@@ -71,11 +73,11 @@ export class PlaceRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryPlaces.find((p) => p.slug === slug) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryPlaces.find((p) => p.slug === slug) || null;
+      return null;
     }
   }
 
@@ -94,11 +96,11 @@ export class PlaceRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryPlaces.find((p) => p.id === id) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryPlaces.find((p) => p.id === id) || null;
+      return null;
     }
   }
 

@@ -24,6 +24,7 @@ export type ImportSessionItemStatus =
   | 'SUCCESS'
   | 'DUPLICATE'
   | 'FAILED';
+export type StoryStatus = 'DRAFT' | 'READY' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface Database {
   public: {
@@ -361,9 +362,11 @@ export interface Database {
           slug: string;
           subtitle: string | null;
           content: string;
+          trip_id: string | null;
           cover_media_id: string | null;
           featured: boolean;
           visibility: VisibilityType;
+          status: StoryStatus;
           published_at: string | null;
           created_at: string;
           updated_at: string;
@@ -374,9 +377,11 @@ export interface Database {
           slug: string;
           subtitle?: string | null;
           content: string;
+          trip_id?: string | null;
           cover_media_id?: string | null;
           featured?: boolean;
           visibility?: VisibilityType;
+          status?: StoryStatus;
           published_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -387,9 +392,11 @@ export interface Database {
           slug?: string;
           subtitle?: string | null;
           content?: string;
+          trip_id?: string | null;
           cover_media_id?: string | null;
           featured?: boolean;
           visibility?: VisibilityType;
+          status?: StoryStatus;
           published_at?: string | null;
           created_at?: string;
           updated_at?: string;

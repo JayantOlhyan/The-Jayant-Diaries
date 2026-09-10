@@ -135,7 +135,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
         const assigned_day_id = suggestions.suggested_day?.day.id || null;
         const assigned_place_id = suggestions.suggested_place?.place.id || null;
 
-        const hasNeedsReview = !metadata.taken_at || !assigned_trip_id;
+        const hasNeedsReview = !(metadata.takenAt || (metadata as any).taken_at) || !assigned_trip_id;
         const status: IngestionItemStatus = hasNeedsReview ? 'NEEDS_REVIEW' : 'READY';
 
         const updatedItem: IngestionItem = {
@@ -1495,7 +1495,7 @@ function ItemDetailModal({
                 <Button
                   size="sm"
                   type="button"
-                  variant={reviewStatus === 'APPROVED' ? 'default' : 'outline'}
+                  variant={reviewStatus === 'APPROVED' ? 'primary' : 'outline'}
                   onClick={() => setReviewStatus('APPROVED')}
                   className={
                     reviewStatus === 'APPROVED'
@@ -1509,7 +1509,7 @@ function ItemDetailModal({
                 <Button
                   size="sm"
                   type="button"
-                  variant={reviewStatus === 'REJECTED' ? 'default' : 'outline'}
+                  variant={reviewStatus === 'REJECTED' ? 'danger' : 'outline'}
                   onClick={() => setReviewStatus('REJECTED')}
                   className={
                     reviewStatus === 'REJECTED'

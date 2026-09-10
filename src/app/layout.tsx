@@ -22,6 +22,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for (var i = 0; i < registrations.length; i++) {
+                    registrations[i].unregister();
+                  }
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-cinema-bg text-cinema-text antialiased selection:bg-cinema-accent/30 selection:text-white">
         {children}
       </body>

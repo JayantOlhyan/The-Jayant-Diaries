@@ -6,7 +6,7 @@ import { TripRepository } from '../trip-repository';
 import { DayRepository } from '../day-repository';
 import { PlaceRepository } from '../place-repository';
 import { SearchRepository } from '../search-repository';
-import { StorageService } from '@/server/storage/storage-service';
+import { StorageService } from '@/lib/storage/storage-service';
 import {
   checkExistingDuplicatesAction,
   archiveApprovedMediaBatchAction,
@@ -356,6 +356,36 @@ describe('Phase 7 & 7.1: Smart Archive Ingestion & Remediation', () => {
       expect(result.success).toBe(false);
       expect(result.status).toBe('FAILED');
       expect(result.reason).toContain('Storage cleanup: Failed — orphaned object may remain');
+    });
+
+    it('simulates Scenario A: 4 files where file 3 suffers storage failure, isolating 3 successes and 1 failure', async () => {
+      const files = [
+        new File(['bytes 1'], 'file_1.jpg', { type: 'image/jpeg' }),
+        new File(['bytes 2'], 'file_2.jpg', { type: 'image/jpeg' }),
+        new File(['bytes 3'], 'file_3_fails.jpg', { type: 'image/jpeg' }),
+        new File(['bytes 4'], 'file_4.jpg', { type: 'image/jpeg' }),
+      ];
+
+      const results = [];
+      for (let i = 0; i < files.length; i++) {
+        if (i === 2) {
+          StorageService._setSimulateUploadFailure(true);
+        } else {
+          StorageService._setSimulateUploadFailure(false);
+        }
+        const fd = new FormData();
+        fd.append('file', files[i]);
+        const res = await archiveSingleMediaAction(fd);
+        results.push(res);
+      }
+
+      const archivedCount = results.filter((r) => r.status === 'ARCHIVED').length;
+      const failedCount = results.filter((r) => r.status === 'FAILED').length;
+
+      expect(archivedCount).toBe(3);
+      expect(failedCount).toBe(1);
+      expect(results[2].status).toBe('FAILED');
+      expect(results[2].reason).toContain('Storage upload failed');
     });
   });
 

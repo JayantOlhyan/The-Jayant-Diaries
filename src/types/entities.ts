@@ -195,3 +195,6 @@ export interface StudioGeographicOverview {
   }[];
 }
 
+export * from './ingestion';
+
+

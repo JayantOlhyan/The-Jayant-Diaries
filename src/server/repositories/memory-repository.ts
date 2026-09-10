@@ -30,12 +30,14 @@ export class MemoryRepository {
         .eq('visibility', 'PUBLIC')
         .order('date', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMemories.filter((m) => m.visibility === 'PUBLIC');
+      if (error) {
+        console.error('Supabase getPublicMemories error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMemories.filter((m) => m.visibility === 'PUBLIC');
+      return data || [];
+    } catch (err: any) {
+      console.error('getPublicMemories exception:', err?.message);
+      return [];
     }
   }
 
@@ -52,12 +54,14 @@ export class MemoryRepository {
         .select('*')
         .order('date', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMemories;
+      if (error) {
+        console.error('Supabase getAllMemories error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMemories;
+      return data || [];
+    } catch (err: any) {
+      console.error('getAllMemories exception:', err?.message);
+      return [];
     }
   }
 
@@ -77,11 +81,11 @@ export class MemoryRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryMemories.find((m) => m.id === id && m.visibility === 'PUBLIC') || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryMemories.find((m) => m.id === id && m.visibility === 'PUBLIC') || null;
+      return null;
     }
   }
 
@@ -99,12 +103,14 @@ export class MemoryRepository {
         .eq('trip_id', tripId)
         .order('date', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMemories.filter((m) => m.trip_id === tripId);
+      if (error) {
+        console.error('Supabase getMemoriesByTripId error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMemories.filter((m) => m.trip_id === tripId);
+      return data || [];
+    } catch (err: any) {
+      console.error('getMemoriesByTripId exception:', err?.message);
+      return [];
     }
   }
 
@@ -123,11 +129,11 @@ export class MemoryRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryMemories.find((m) => m.id === id) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryMemories.find((m) => m.id === id) || null;
+      return null;
     }
   }
 

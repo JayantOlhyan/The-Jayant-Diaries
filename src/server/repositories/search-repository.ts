@@ -1,9 +1,10 @@
 import { supabase, isSupabaseConfigured } from '@/lib/db/client';
-import { TripRow, PlaceRow, MemoryRow, MediaRow } from '@/types/entities';
+import { TripRow, PlaceRow, MemoryRow, MediaRow, StoryRow } from '@/types/entities';
 import { TripRepository } from './trip-repository';
 import { PlaceRepository } from './place-repository';
 import { MemoryRepository } from './memory-repository';
 import { MediaRepository } from './media-repository';
+import { StoryRepository } from './story-repository';
 
 export interface SearchResults {
   query: string;
@@ -50,11 +51,12 @@ export class SearchRepository {
     const limit = Math.min(Math.max(1, typeof options.limit === 'number' && !isNaN(options.limit) ? options.limit : 20), 50);
 
     // Fetch all public candidate records across the repository boundary
-    const [publicTrips, allPlaces, publicMemories, publicMedia] = await Promise.all([
+    const [publicTrips, allPlaces, publicMemories, publicMedia, publishedStories] = await Promise.all([
       TripRepository.getPublicTrips(),
       PlaceRepository.getAllPlaces(),
       MemoryRepository.getPublicMemories(),
       MediaRepository.getPublicMedia(),
+      StoryRepository.getPublishedStories(),
     ]);
 
     const placesMap = new Map(allPlaces.map((p) => [p.id, p]));
@@ -96,19 +98,46 @@ export class SearchRepository {
       .slice(0, limit);
 
     // 3. Filter and score Stories / Memories (with relational context)
-    const stories = publicMemories
-      .filter((m) => {
-        const place = m.place_id ? placesMap.get(m.place_id) : null;
-        const trip = m.trip_id ? tripsMap.get(m.trip_id) : null;
-        return (
-          m.title.toLowerCase().includes(q) ||
-          (m.description && m.description.toLowerCase().includes(q)) ||
-          (m.journal && m.journal.toLowerCase().includes(q)) ||
-          (place && place.name.toLowerCase().includes(q)) ||
-          (place?.state && place.state.toLowerCase().includes(q)) ||
-          (trip && trip.title.toLowerCase().includes(q))
-        );
-      })
+    const matchingPublishedStories = publishedStories.filter((s) => {
+      const trip = s.trip_id ? tripsMap.get(s.trip_id) : null;
+      return (
+        s.title.toLowerCase().includes(q) ||
+        s.slug.toLowerCase().includes(q) ||
+        (s.subtitle && s.subtitle.toLowerCase().includes(q)) ||
+        (s.content && s.content.toLowerCase().includes(q)) ||
+        (trip && trip.title.toLowerCase().includes(q))
+      );
+    });
+
+    const matchingMemories = publicMemories.filter((m) => {
+      const place = m.place_id ? placesMap.get(m.place_id) : null;
+      const trip = m.trip_id ? tripsMap.get(m.trip_id) : null;
+      return (
+        m.title.toLowerCase().includes(q) ||
+        (m.description && m.description.toLowerCase().includes(q)) ||
+        (m.journal && m.journal.toLowerCase().includes(q)) ||
+        (place && place.name.toLowerCase().includes(q)) ||
+        (place?.state && place.state.toLowerCase().includes(q)) ||
+        (trip && trip.title.toLowerCase().includes(q))
+      );
+    });
+
+    const mappedPublishedStories: MemoryRow[] = matchingPublishedStories.map((s) => ({
+      id: s.slug,
+      title: s.title,
+      description: s.subtitle || null,
+      journal: null,
+      date: s.published_at || s.created_at,
+      trip_id: s.trip_id || null,
+      day_id: null,
+      place_id: null,
+      featured: s.featured,
+      visibility: s.visibility,
+      created_at: s.created_at,
+      updated_at: s.updated_at,
+    }));
+
+    const stories: MemoryRow[] = [...mappedPublishedStories, ...matchingMemories]
       .sort((a, b) => {
         const scoreA = getMatchScore(a.title, a.description, q);
         const scoreB = getMatchScore(b.title, b.description, q);

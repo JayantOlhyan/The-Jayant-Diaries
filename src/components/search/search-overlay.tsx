@@ -441,11 +441,11 @@ export function SearchOverlay() {
                               <h5 className="font-serif text-xs sm:text-sm font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
                                 {story.title}
                               </h5>
-                              {story.description && (
-                                <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
-                                  {story.description}
-                                </p>
-                              )}
+                                {((story as any).subtitle || (story as any).description || (story as any).journal) && (
+                                  <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
+                                    {(story as any).subtitle || (story as any).description || (story as any).journal}
+                                  </p>
+                                )}
                             </div>
                           </div>
                         );

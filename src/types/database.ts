@@ -11,6 +11,19 @@ export type TripStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export type MediaType = 'PHOTO' | 'VIDEO' | 'REEL' | 'STORY' | 'AUDIO' | 'DOCUMENT';
 export type InstagramType = 'POST' | 'REEL' | 'CAROUSEL';
 export type CurationStatus = 'IMPORTED' | 'REVIEW_REQUIRED' | 'CURATED' | 'ARCHIVED';
+export type ImportSessionStatus =
+  | 'CREATED'
+  | 'PROCESSING'
+  | 'REVIEW_REQUIRED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+export type ImportSessionItemStatus =
+  | 'QUEUED'
+  | 'PROCESSING'
+  | 'SUCCESS'
+  | 'DUPLICATE'
+  | 'FAILED';
 
 export interface Database {
   public: {
@@ -211,6 +224,7 @@ export interface Database {
           position: number;
           visibility: VisibilityType;
           curation_status: CurationStatus;
+          import_session_id?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -239,6 +253,7 @@ export interface Database {
           position?: number;
           visibility?: VisibilityType;
           curation_status?: CurationStatus;
+          import_session_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -267,6 +282,7 @@ export interface Database {
           position?: number;
           visibility?: VisibilityType;
           curation_status?: CurationStatus;
+          import_session_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -375,6 +391,100 @@ export interface Database {
           featured?: boolean;
           visibility?: VisibilityType;
           published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      import_sessions: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          created_by: string;
+          name: string | null;
+          trip_id: string | null;
+          day_id: string | null;
+          status: ImportSessionStatus;
+          total_files: number;
+          processed_files: number;
+          successful_files: number;
+          duplicate_files: number;
+          failed_files: number;
+          notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string;
+          name?: string | null;
+          trip_id?: string | null;
+          day_id?: string | null;
+          status?: ImportSessionStatus;
+          total_files?: number;
+          processed_files?: number;
+          successful_files?: number;
+          duplicate_files?: number;
+          failed_files?: number;
+          notes?: string | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string;
+          name?: string | null;
+          trip_id?: string | null;
+          day_id?: string | null;
+          status?: ImportSessionStatus;
+          total_files?: number;
+          processed_files?: number;
+          successful_files?: number;
+          duplicate_files?: number;
+          failed_files?: number;
+          notes?: string | null;
+        };
+      };
+      import_session_items: {
+        Row: {
+          id: string;
+          session_id: string;
+          filename: string;
+          file_size_bytes: number | null;
+          mime_type: string | null;
+          content_hash: string | null;
+          status: ImportSessionItemStatus;
+          error_message: string | null;
+          media_id: string | null;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          filename: string;
+          file_size_bytes?: number | null;
+          mime_type?: string | null;
+          content_hash?: string | null;
+          status?: ImportSessionItemStatus;
+          error_message?: string | null;
+          media_id?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          filename?: string;
+          file_size_bytes?: number | null;
+          mime_type?: string | null;
+          content_hash?: string | null;
+          status?: ImportSessionItemStatus;
+          error_message?: string | null;
+          media_id?: string | null;
+          metadata?: Json | null;
           created_at?: string;
           updated_at?: string;
         };

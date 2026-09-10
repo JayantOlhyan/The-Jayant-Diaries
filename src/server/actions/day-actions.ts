@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { DayRepository, DayInsert, DayUpdate } from '@/server/repositories/day-repository';
 import { daySchema } from '@/lib/validation/entities';
+import { verifyStudioAuth } from '@/lib/auth/server';
 
 export async function createDayAction(payload: {
   trip_id: string;
@@ -13,6 +14,11 @@ export async function createDayAction(payload: {
   journal?: string | null;
 }) {
   try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
     const validated = daySchema.parse(payload);
     const created = await DayRepository.createDay(validated as DayInsert);
 
@@ -27,7 +33,19 @@ export async function createDayAction(payload: {
 
 export async function updateDayAction(id: string, tripId: string, payload: Partial<DayUpdate>) {
   try {
-    const updated = await DayRepository.updateDay(id, payload);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid day ID is required' };
+    }
+    if (!tripId || typeof tripId !== 'string' || tripId.trim() === '') {
+      return { success: false, error: 'Valid trip ID is required' };
+    }
+
+    const updated = await DayRepository.updateDay(id.trim(), payload);
     revalidatePath(`/studio/trips/${tripId}`);
     revalidatePath('/studio/days');
     return { success: true, day: updated };
@@ -38,7 +56,19 @@ export async function updateDayAction(id: string, tripId: string, payload: Parti
 
 export async function deleteDayAction(id: string, tripId: string) {
   try {
-    await DayRepository.deleteDay(id);
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error || 'Unauthorized: Valid Studio session required' };
+    }
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return { success: false, error: 'Valid day ID is required' };
+    }
+    if (!tripId || typeof tripId !== 'string' || tripId.trim() === '') {
+      return { success: false, error: 'Valid trip ID is required' };
+    }
+
+    await DayRepository.deleteDay(id.trim());
     revalidatePath(`/studio/trips/${tripId}`);
     revalidatePath('/studio/days');
     return { success: true };

@@ -47,11 +47,44 @@ export interface MemoryWithDetails extends MemoryRow {
   place?: PlaceRow | null;
 }
 
+export type StoryBlockType = 'TEXT' | 'INTRO' | 'MEDIA' | 'IMAGE_GALLERY' | 'MEMORY' | 'PLACE' | 'VIDEO' | 'INSTAGRAM' | 'QUOTE' | 'DIVIDER';
+
+export interface StoryBlock {
+  id: string;
+  type: StoryBlockType;
+  order: number;
+  text?: string;
+  media_id?: string;
+  memory_id?: string;
+  place_id?: string;
+  caption?: string;
+  media?: MediaRow;
+  memory?: MemoryRow;
+  place?: PlaceRow;
+}
+
+export interface StoryReadinessResult {
+  isReady: boolean;
+  hasTitle: boolean;
+  hasSlug: boolean;
+  hasContent: boolean;
+  hasCover: boolean;
+  isCoverPublic: boolean;
+  areMediaPublic: boolean;
+  arePlacesPublic: boolean;
+  isTripPublishable: boolean;
+  reasons: string[];
+}
+
 export interface StoryWithDetails extends StoryRow {
+  trip?: TripRow | null;
   cover_media?: MediaRow | null;
+  coverMedia?: MediaRow | null;
   places?: PlaceRow[];
-  trips?: TripRow[];
+  memories?: MemoryRow[];
   media?: MediaRow[];
+  blocks?: StoryBlock[];
+  parsedContent?: StoryBlock[];
 }
 
 export interface CinematicDay {

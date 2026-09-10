@@ -24,6 +24,7 @@ export default function StudioLayout({
     { label: "Smart Ingestion", href: "/studio/import" },
     { label: "Import History", href: "/studio/imports" },
     { label: "Archive Curation", href: "/studio/archive" },
+    { label: "Backup & Export", href: "/studio/archive/export" },
     { label: "Media Manager", href: "/studio/media" },
     { label: "Instagram", href: "/studio/instagram" },
     { label: "Map Overview", href: "/studio/map" },

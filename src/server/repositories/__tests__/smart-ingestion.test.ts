@@ -273,7 +273,7 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
           filename: 'original_shanti.jpg',
           storage_path: 'media/test-shanti/original',
           storage_url: '/uploads/original_shanti.jpg',
-          type: 'IMAGE',
+          type: 'PHOTO',
           mime_type: 'image/jpeg',
           content_hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
           visibility: 'PRIVATE',

@@ -24,6 +24,15 @@ export interface DeleteStorageResult {
   error?: string;
 }
 
+export class StorageConfigurationError extends Error {
+  constructor(
+    message = 'Supabase Storage is not configured. Persistent binary upload requires valid Supabase environment variables.'
+  ) {
+    super(message);
+    this.name = 'StorageConfigurationError';
+  }
+}
+
 // In-memory storage simulator for isolated unit tests
 interface InMemoryStoredObject {
   bucket: string;
@@ -110,7 +119,7 @@ export class StorageService {
         const storageUrl = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/authenticated/${bucket}/${storagePath}`;
         return { storagePath, storageUrl };
       }
-      throw new Error(
+      throw new StorageConfigurationError(
         'Supabase Storage is not configured. Persistent binary upload requires valid Supabase environment variables.'
       );
     }
@@ -203,7 +212,10 @@ export class StorageService {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co';
 
     if (!isSupabaseConfigured) {
-      return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/sign/${bucket}/${storagePath}?token=mock-token`;
+      if (process.env.NODE_ENV === 'test') {
+        return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/sign/${bucket}/${storagePath}?token=mock-token`;
+      }
+      throw new StorageConfigurationError('Supabase Storage is not configured.');
     }
 
     const adminClient = createAdminClient();

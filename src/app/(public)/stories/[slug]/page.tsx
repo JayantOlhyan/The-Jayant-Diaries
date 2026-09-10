@@ -11,17 +11,7 @@ interface StoryPageProps {
   params: Promise<{ slug: string }>;
 }
 
-const STORY_IMAGES: Record<string, string> = {
-  "mem11111-1111-4111-a111-111111111111":
-    "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1600&auto=format&fit=crop&q=80",
-  "mem22222-2222-4222-a222-222222222222":
-    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1600&auto=format&fit=crop&q=80",
-  "mem33333-3333-4333-a333-333333333333":
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80",
-};
 
-const DEFAULT_STORY_IMAGE =
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&auto=format&fit=crop&q=80";
 
 async function findMemory(slug: string) {
   let memory = await MemoryRepository.getPublicMemoryById(slug);
@@ -63,10 +53,7 @@ export default async function StoryDetailPage({ params }: StoryPageProps) {
   ]);
 
   const mediaForMemory = allMedia.find((m) => m.memory_id === memory.id);
-  const heroImage =
-    STORY_IMAGES[memory.id] ||
-    mediaForMemory?.storage_url ||
-    DEFAULT_STORY_IMAGE;
+  const heroImage = mediaForMemory?.storage_url || "";
 
   const wordCount = ((memory.journal || "") + " " + (memory.description || "")).split(
     /\s+/

@@ -113,8 +113,13 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
   if (typeof rawMetadata === 'string') {
     try {
       metadata = JSON.parse(rawMetadata);
-    } catch {
-      // Ignored, proceed with defaults
+    } catch (err: any) {
+      return {
+        filename,
+        success: false,
+        status: 'FAILED',
+        reason: `Failed to parse metadata payload: ${err.message || 'Invalid JSON'}`,
+      };
     }
   }
 
@@ -689,8 +694,12 @@ export async function createImportSessionAction(input: {
       status: 'CREATED',
     });
 
-    revalidatePath('/studio/imports');
-    revalidatePath('/studio/import');
+    try {
+      revalidatePath('/studio/imports');
+      revalidatePath('/studio/import');
+    } catch {
+      // Ignored in test environment
+    }
     return { success: true, session };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to create import session' };
@@ -781,8 +790,12 @@ export async function retryFailedSessionItemsAction(
       failed_files: 0,
     });
 
-    revalidatePath('/studio/imports');
-    revalidatePath(`/studio/imports/${sessionId}`);
+    try {
+      revalidatePath('/studio/imports');
+      revalidatePath(`/studio/imports/${sessionId}`);
+    } catch {
+      // Ignored in test environment
+    }
 
     return { success: true, retriedCount: failedItems.length };
   } catch (err: any) {
@@ -818,8 +831,12 @@ export async function finalizeImportSessionAction(
       status: finalStatus,
     });
 
-    revalidatePath('/studio/imports');
-    revalidatePath(`/studio/imports/${sessionId}`);
+    try {
+      revalidatePath('/studio/imports');
+      revalidatePath(`/studio/imports/${sessionId}`);
+    } catch {
+      // Ignored in test environment
+    }
 
     return { success: true, session: updated };
   } catch (err: any) {

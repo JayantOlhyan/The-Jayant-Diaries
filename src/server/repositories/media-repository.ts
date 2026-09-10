@@ -94,6 +94,10 @@ export class MediaRepository {
     }
   }
 
+  static async getAllMedia(): Promise<MediaRow[]> {
+    return this.getAllStudioMedia();
+  }
+
   /**
    * Retrieves media associated with a specific trip, ordered by position.
    */
@@ -412,6 +416,58 @@ export class MediaRepository {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Directly creates or inserts a media record (used during restore operations).
+   */
+  static async createMedia(payload: Partial<MediaRow>): Promise<MediaRow> {
+    const now = new Date().toISOString();
+    const newMedia: MediaRow = {
+      id: payload.id || crypto.randomUUID(),
+      filename: payload.filename || 'restored_media',
+      storage_path: payload.storage_path || '',
+      storage_url: payload.storage_url || '',
+      thumbnail_url: payload.thumbnail_url || null,
+      type: payload.type || 'PHOTO',
+      mime_type: payload.mime_type || 'image/jpeg',
+      width: payload.width || null,
+      height: payload.height || null,
+      duration: payload.duration || null,
+      file_size_bytes: payload.file_size_bytes || null,
+      content_hash: payload.content_hash || null,
+      taken_at: payload.taken_at || null,
+      latitude: payload.latitude || null,
+      longitude: payload.longitude || null,
+      trip_id: payload.trip_id || null,
+      day_id: payload.day_id || null,
+      place_id: payload.place_id || null,
+      memory_id: payload.memory_id || null,
+      caption: payload.caption || null,
+      alt_text: payload.alt_text || null,
+      position: payload.position ?? 0,
+      visibility: payload.visibility || 'PRIVATE',
+      curation_status: payload.curation_status || 'CURATED',
+      import_session_id: payload.import_session_id || null,
+      created_at: payload.created_at || now,
+      updated_at: payload.updated_at || now,
+    };
+
+    if (!isSupabaseConfigured) {
+      const idx = inMemoryMedia.findIndex((m) => m.id === newMedia.id);
+      if (idx !== -1) {
+        inMemoryMedia[idx] = newMedia;
+      } else {
+        inMemoryMedia.push(newMedia);
+      }
+      return newMedia;
+    }
+
+    const { data, error } = await supabase.from('media').insert(newMedia as any).select().single();
+    if (error) {
+      throw new Error(`Failed to create media record: ${error.message}`);
+    }
+    return data;
   }
 
   /**

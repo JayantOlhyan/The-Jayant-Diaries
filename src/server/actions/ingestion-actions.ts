@@ -14,6 +14,9 @@ import {
   ArchiveBatchResult,
   ArchiveItemResult,
 } from '@/types/ingestion';
+import { ImportSessionRepository } from '@/server/repositories/import-session-repository';
+import { ImportSessionRow, ImportSessionWithDetails } from '@/types/entities';
+import { ImportSessionStatus } from '@/types/database';
 
 // Allowed MIME types and extensions for Phase 7 media ingestion
 const ALLOWED_MIME_TYPES = new Set([
@@ -165,19 +168,71 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     metadata.overrideDuplicate || metadata.override_duplicate || formData.get('overrideDuplicate') === 'true'
   );
 
+  const sessionId =
+    metadata.sessionId ||
+    metadata.session_id ||
+    formData.get('sessionId') ||
+    null;
+
   if (!isOverride) {
     const existingDuplicates = await MediaRepository.findMediaByContentHashes([contentHash]);
     if (existingDuplicates[contentHash]) {
+      if (sessionId) {
+        await ImportSessionRepository.addSessionItem({
+          session_id: String(sessionId),
+          filename,
+          file_size_bytes: file.size,
+          mime_type: mimeType,
+          content_hash: contentHash,
+          status: 'DUPLICATE',
+          error_message: 'Exact duplicate already exists in archive',
+          media_id: existingDuplicates[contentHash],
+          metadata: { width: metadata.width, height: metadata.height },
+        }).catch(() => {});
+        await ImportSessionRepository.incrementSessionCounts(String(sessionId), {
+          processed: 1,
+          duplicate: 1,
+        }).catch(() => {});
+      }
       return {
         itemId: metadata.itemId || metadata.id,
         filename,
         success: false,
         status: 'DUPLICATE',
         mediaId: existingDuplicates[contentHash],
+        sessionId: sessionId ? String(sessionId) : undefined,
         reason: 'Exact duplicate already exists in archive',
       };
     }
   }
+
+  // Helper to safely record failures against an active import session
+  const recordFailure = async (reason: string): Promise<ArchiveItemResult> => {
+    if (sessionId) {
+      await ImportSessionRepository.addSessionItem({
+        session_id: String(sessionId),
+        filename,
+        file_size_bytes: file.size,
+        mime_type: mimeType,
+        content_hash: contentHash,
+        status: 'FAILED',
+        error_message: reason,
+        metadata: { width: metadata.width, height: metadata.height },
+      }).catch(() => {});
+      await ImportSessionRepository.incrementSessionCounts(String(sessionId), {
+        processed: 1,
+        failed: 1,
+      }).catch(() => {});
+    }
+    return {
+      itemId: metadata.itemId || metadata.id,
+      filename,
+      success: false,
+      status: 'FAILED',
+      sessionId: sessionId ? String(sessionId) : undefined,
+      reason,
+    };
+  };
 
   // GPS coordinates validation
   let latitude: number | null = null;
@@ -188,13 +243,7 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     const numLat = Number(rawLat);
     const numLng = Number(rawLng);
     if (!isValidCoordinate(numLat, numLng)) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Invalid GPS coordinates [${numLat}, ${numLng}] for ${filename}`,
-      };
+      return recordFailure(`Invalid GPS coordinates [${numLat}, ${numLng}] for ${filename}`);
     }
     latitude = numLat;
     longitude = numLng;
@@ -208,48 +257,24 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
   if (tripId) {
     const trip = await TripRepository.getTripById(String(tripId));
     if (!trip) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Referenced trip ID ${tripId} not found in archive`,
-      };
+      return recordFailure(`Referenced trip ID ${tripId} not found in archive`);
     }
   }
 
   if (dayId) {
     const day = await DayRepository.getDayById(String(dayId));
     if (!day) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Referenced day ID ${dayId} not found in archive`,
-      };
+      return recordFailure(`Referenced day ID ${dayId} not found in archive`);
     }
     if (tripId && day.trip_id !== String(tripId)) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Referenced day ${dayId} does not belong to trip ${tripId}`,
-      };
+      return recordFailure(`Referenced day ${dayId} does not belong to trip ${tripId}`);
     }
   }
 
   if (placeId) {
     const place = await PlaceRepository.getPlaceById(String(placeId));
     if (!place) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Referenced place ID ${placeId} not found in archive`,
-      };
+      return recordFailure(`Referenced place ID ${placeId} not found in archive`);
     }
   }
 
@@ -269,13 +294,7 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     storagePath = uploadRes.storagePath;
     storageUrl = uploadRes.storageUrl;
   } catch (storageErr: any) {
-    return {
-      itemId: metadata.itemId || metadata.id,
-      filename,
-      success: false,
-      status: 'FAILED',
-      reason: `Storage upload failed: ${storageErr.message || 'Unknown storage error'}`,
-    };
+    return recordFailure(`Storage upload failed: ${storageErr.message || 'Unknown storage error'}`);
   }
 
   // Database persistence with storage failure safety cleanup
@@ -300,6 +319,7 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     place_id: placeId ? String(placeId) : null,
     caption: metadata.caption || null,
     alt_text: metadata.altText || metadata.alt_text || null,
+    import_session_id: sessionId ? String(sessionId) : null,
     // Strict invariant: All new archive media is PRIVATE by default
     visibility: 'PRIVATE',
   };
@@ -314,30 +334,42 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     });
 
     if (!cleanup.success) {
-      return {
-        itemId: metadata.itemId || metadata.id,
-        filename,
-        success: false,
-        status: 'FAILED',
-        reason: `Archive failed. File: ${filename}. Database: Not archived. Storage cleanup: Failed — orphaned object may remain: ${storagePath}`,
-      };
+      return recordFailure(
+        `Archive failed. File: ${filename}. Database: Not archived. Storage cleanup: Failed — orphaned object may remain: ${storagePath}`
+      );
     }
 
-    return {
-      itemId: metadata.itemId || metadata.id,
+    return recordFailure(
+      `Archive failed. File: ${filename}. Database persistence failed: ${dbErr.message || 'Unknown error'}. Storage object cleaned up.`
+    );
+  }
+
+  // Record successful item in session if sessionId present
+  if (sessionId) {
+    await ImportSessionRepository.addSessionItem({
+      session_id: String(sessionId),
       filename,
-      success: false,
-      status: 'FAILED',
-      reason: `Archive failed. File: ${filename}. Database persistence failed: ${dbErr.message || 'Unknown error'}. Storage object cleaned up.`,
-    };
+      file_size_bytes: file.size,
+      mime_type: mimeType,
+      content_hash: contentHash,
+      status: 'SUCCESS',
+      media_id: mediaId,
+      metadata: { width: metadata.width, height: metadata.height },
+    }).catch(() => {});
+    await ImportSessionRepository.incrementSessionCounts(String(sessionId), {
+      processed: 1,
+      successful: 1,
+    }).catch(() => {});
   }
 
   // Revalidate routes safely
   try {
     revalidatePath('/studio/media');
     revalidatePath('/studio/import');
+    revalidatePath('/studio/imports');
     revalidatePath('/studio/dashboard');
     if (tripId) revalidatePath(`/studio/trips/${tripId}`);
+    if (sessionId) revalidatePath(`/studio/imports/${sessionId}`);
   } catch {
     // Ignored in test environment
   }
@@ -350,6 +382,7 @@ export async function archiveSingleMediaAction(formData: FormData): Promise<Arch
     mediaId,
     storagePath,
     storageUrl,
+    sessionId: sessionId ? String(sessionId) : undefined,
   };
 }
 
@@ -605,3 +638,192 @@ export async function archiveApprovedMediaBatchAction(
     error: failedCount > 0 ? `${failedCount} item(s) failed to archive` : undefined,
   };
 }
+
+/**
+ * Creates a new import session with optional default trip/day context.
+ * Enforces studio authentication and referential validity.
+ */
+export async function createImportSessionAction(input: {
+  name?: string;
+  tripId?: string | null;
+  dayId?: string | null;
+  totalFiles?: number;
+  notes?: string | null;
+}): Promise<{ success: boolean; session?: ImportSessionRow; error?: string }> {
+  try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return {
+        success: false,
+        error: auth.error || 'Unauthorized: Valid Studio session required',
+      };
+    }
+
+    // Validate referential integrity of tripId and dayId if supplied
+    if (input.tripId) {
+      const trip = await TripRepository.getTripById(input.tripId);
+      if (!trip) {
+        return { success: false, error: `Trip ID ${input.tripId} not found` };
+      }
+    }
+
+    if (input.dayId) {
+      const day = await DayRepository.getDayById(input.dayId);
+      if (!day) {
+        return { success: false, error: `Day ID ${input.dayId} not found` };
+      }
+      if (input.tripId && day.trip_id !== input.tripId) {
+        return {
+          success: false,
+          error: `Day ${input.dayId} does not belong to Trip ${input.tripId}`,
+        };
+      }
+    }
+
+    const session = await ImportSessionRepository.createSession({
+      name: input.name || null,
+      trip_id: input.tripId || null,
+      day_id: input.dayId || null,
+      total_files: input.totalFiles ?? 0,
+      notes: input.notes || null,
+      status: 'CREATED',
+    });
+
+    revalidatePath('/studio/imports');
+    revalidatePath('/studio/import');
+    return { success: true, session };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to create import session' };
+  }
+}
+
+/**
+ * Retrieves all past import sessions.
+ */
+export async function getImportSessionsAction(
+  limit = 50,
+  offset = 0
+): Promise<{ success: boolean; sessions: ImportSessionWithDetails[]; error?: string }> {
+  try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return {
+        success: false,
+        sessions: [],
+        error: auth.error || 'Unauthorized: Valid Studio session required',
+      };
+    }
+
+    const sessions = await ImportSessionRepository.getAllSessions(limit, offset);
+    return { success: true, sessions };
+  } catch (err: any) {
+    return { success: false, sessions: [], error: err.message || 'Failed to fetch import sessions' };
+  }
+}
+
+/**
+ * Retrieves a single import session with its items and relational details.
+ */
+export async function getImportSessionDetailAction(
+  id: string
+): Promise<{ success: boolean; session?: ImportSessionWithDetails | null; error?: string }> {
+  try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return {
+        success: false,
+        error: auth.error || 'Unauthorized: Valid Studio session required',
+      };
+    }
+
+    if (!id || typeof id !== 'string') {
+      return { success: false, error: 'Valid session ID required' };
+    }
+
+    const session = await ImportSessionRepository.getSessionById(id);
+    return { success: true, session };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch session detail' };
+  }
+}
+
+/**
+ * Resets failed items in a session to QUEUED so they can be retried without re-processing successful/duplicate files.
+ */
+export async function retryFailedSessionItemsAction(
+  sessionId: string
+): Promise<{ success: boolean; retriedCount: number; error?: string }> {
+  try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return {
+        success: false,
+        retriedCount: 0,
+        error: auth.error || 'Unauthorized: Valid Studio session required',
+      };
+    }
+
+    const failedItems = await ImportSessionRepository.getFailedSessionItems(sessionId);
+    if (failedItems.length === 0) {
+      return { success: true, retriedCount: 0 };
+    }
+
+    for (const item of failedItems) {
+      await ImportSessionRepository.updateSessionItem(item.id, {
+        status: 'QUEUED',
+        error_message: null,
+      });
+    }
+
+    // Adjust session counts: reset failed files to 0 and set status back to PROCESSING
+    await ImportSessionRepository.updateSession(sessionId, {
+      status: 'PROCESSING',
+      failed_files: 0,
+    });
+
+    revalidatePath('/studio/imports');
+    revalidatePath(`/studio/imports/${sessionId}`);
+
+    return { success: true, retriedCount: failedItems.length };
+  } catch (err: any) {
+    return { success: false, retriedCount: 0, error: err.message || 'Failed to retry items' };
+  }
+}
+
+/**
+ * Finalizes an import session with an authoritative status (COMPLETED or REVIEW_REQUIRED).
+ */
+export async function finalizeImportSessionAction(
+  sessionId: string,
+  status?: ImportSessionStatus
+): Promise<{ success: boolean; session?: ImportSessionRow; error?: string }> {
+  try {
+    const auth = await verifyStudioAuth();
+    if (!auth.authenticated) {
+      return {
+        success: false,
+        error: auth.error || 'Unauthorized: Valid Studio session required',
+      };
+    }
+
+    const current = await ImportSessionRepository.getSessionById(sessionId);
+    if (!current) {
+      return { success: false, error: `Session ${sessionId} not found` };
+    }
+
+    const finalStatus: ImportSessionStatus =
+      status || (current.failed_files > 0 ? 'REVIEW_REQUIRED' : 'COMPLETED');
+
+    const updated = await ImportSessionRepository.updateSession(sessionId, {
+      status: finalStatus,
+    });
+
+    revalidatePath('/studio/imports');
+    revalidatePath(`/studio/imports/${sessionId}`);
+
+    return { success: true, session: updated };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to finalize session' };
+  }
+}
+

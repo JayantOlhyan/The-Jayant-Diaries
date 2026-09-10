@@ -12,13 +12,17 @@ export const metadata: Metadata = {
 export default async function JourneysPage() {
   const trips = await TripRepository.getPublicTrips();
 
-  // Resolve cover media for each public trip
-  const tripsWithCovers = await Promise.all(
-    trips.map(async (trip) => {
-      const cover = trip.cover_media_id ? await MediaRepository.getMediaById(trip.cover_media_id) : null;
-      return { ...trip, cover };
-    })
-  );
+  // Batched resolution of cover media for public trips (Zero N+1 queries)
+  const coverIds = trips.map((t) => t.cover_media_id).filter(Boolean) as string[];
+  const covers = coverIds.length > 0 ? await MediaRepository.getMediaByIds(coverIds) : [];
+  const coverMap = new Map(covers.map((c) => [c.id, c]));
+
+  const tripsWithCovers = trips.map((trip) => ({
+    ...trip,
+    cover: trip.cover_media_id ? coverMap.get(trip.cover_media_id) || null : null,
+  }));
+
+  const heroCoverUrl = covers[0]?.storage_url || null;
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12 sm:py-16 space-y-12">
@@ -46,15 +50,19 @@ export default async function JourneysPage() {
         </div>
       </div>
 
-      {/* Mountain Vista Hero Banner */}
+      {/* Editorial Hero Banner */}
       <div className="relative aspect-[21/9] sm:aspect-[24/8] w-full rounded-2xl overflow-hidden bg-neutral-950 border border-white/[0.08] shadow-2xl">
-        <Image
-          src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80"
-          alt="Himalayan mountain range vista"
-          fill
-          priority
-          className="object-cover object-center scale-[1.01]"
-        />
+        {heroCoverUrl ? (
+          <Image
+            src={heroCoverUrl}
+            alt="Travel archive vista"
+            fill
+            priority
+            className="object-cover object-center scale-[1.01]"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-[#0B0D0E]" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0D0E] via-transparent to-black/20" />
 
         <div className="absolute bottom-4 left-6 sm:bottom-6 sm:left-8 z-10">

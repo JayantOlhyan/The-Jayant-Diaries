@@ -39,53 +39,9 @@ export function JourneysClient({ initialTrips }: JourneysClientProps) {
     status: 'PUBLISHED',
   }));
 
-  // Curated upcoming chapters matching reference specification
-  const upcomingJourneys: JourneyCardItem[] = [
-    {
-      id: 'chapter-spiti',
-      title: 'Spiti',
-      subtitle: 'Land of Quiet Mountains',
-      category: 'Mountains',
-      imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
-      status: 'COMING_SOON',
-    },
-    {
-      id: 'chapter-rajasthan',
-      title: 'Rajasthan',
-      subtitle: 'Colours and Contrasts',
-      category: 'Cities',
-      imageUrl: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&auto=format&fit=crop&q=80',
-      status: 'COMING_SOON',
-    },
-    {
-      id: 'chapter-kerala',
-      title: 'Kerala',
-      subtitle: 'Backwaters and Beyond',
-      category: 'Coastlines',
-      imageUrl: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?w=800&auto=format&fit=crop&q=80',
-      status: 'COMING_SOON',
-    },
-    {
-      id: 'chapter-himachal',
-      title: 'Himachal',
-      subtitle: 'Valleys and Villages',
-      category: 'Mountains',
-      imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop&q=80',
-      status: 'COMING_SOON',
-    },
-    {
-      id: 'chapter-japan',
-      title: 'Japan',
-      subtitle: 'A Different Rhythm',
-      category: 'International',
-      imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&auto=format&fit=crop&q=80',
-      status: 'COMING_SOON',
-    },
-  ];
+  const allJourneys = liveJourneyCards;
 
-  const allJourneys = [...liveJourneyCards, ...upcomingJourneys];
-
-  const categories = ['All Journeys', 'Mountains', 'Cities', 'Coastlines', 'International'];
+  const categories = ['All Journeys'];
 
   const filteredJourneys = allJourneys.filter((j) => {
     if (selectedCategory === 'All Journeys') return true;
@@ -113,7 +69,15 @@ export function JourneysClient({ initialTrips }: JourneysClientProps) {
       </div>
 
       {/* Journeys Editorial Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {filteredJourneys.length === 0 ? (
+        <div className="py-20 text-center space-y-3 rounded-2xl border border-white/[0.06] bg-neutral-900/20 p-8">
+          <p className="font-serif text-lg text-white">No journeys found in archive</p>
+          <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+            Journeys will appear here as chapters are curated and published in the archive.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredJourneys.map((journey) => {
           const isLive = journey.status === 'PUBLISHED' && journey.slug;
 
@@ -183,6 +147,7 @@ export function JourneysClient({ initialTrips }: JourneysClientProps) {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

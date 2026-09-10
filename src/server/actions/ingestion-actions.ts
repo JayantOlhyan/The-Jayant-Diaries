@@ -67,7 +67,7 @@ export async function archiveApprovedMediaBatchAction(
 
       // Reference validation
       if (item.trip_id) {
-        const trip = await TripRepository.findById(item.trip_id);
+        const trip = await TripRepository.getTripById(item.trip_id);
         if (!trip) {
           throw new Error(`Referenced trip ID ${item.trip_id} not found in archive`);
         }
@@ -75,14 +75,14 @@ export async function archiveApprovedMediaBatchAction(
       }
 
       if (item.day_id) {
-        const day = await DayRepository.findById(item.day_id);
+        const day = await DayRepository.getDayById(item.day_id);
         if (!day) {
           throw new Error(`Referenced day ID ${item.day_id} not found in archive`);
         }
       }
 
       if (item.place_id) {
-        const place = await PlaceRepository.findById(item.place_id);
+        const place = await PlaceRepository.getPlaceById(item.place_id);
         if (!place) {
           throw new Error(`Referenced place ID ${item.place_id} not found in archive`);
         }

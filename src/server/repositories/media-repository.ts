@@ -58,18 +58,14 @@ export class MediaRepository {
         .order('taken_at', { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMedia
-          .filter((m) => m.visibility === 'PUBLIC')
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-          .slice(offset, offset + limit);
+      if (error) {
+        console.error('Supabase getPublicMedia error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMedia
-        .filter((m) => m.visibility === 'PUBLIC')
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        .slice(offset, offset + limit);
+      return data || [];
+    } catch (err: any) {
+      console.error('getPublicMedia exception:', err?.message);
+      return [];
     }
   }
 
@@ -87,12 +83,14 @@ export class MediaRepository {
         .order('position', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        return [...inMemoryMedia].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (error) {
+        console.error('Supabase getAllStudioMedia error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return [...inMemoryMedia].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return data || [];
+    } catch (err: any) {
+      console.error('getAllStudioMedia exception:', err?.message);
+      return [];
     }
   }
 
@@ -119,16 +117,14 @@ export class MediaRepository {
         .order('position', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMedia
-          .filter((m) => m.trip_id === tripId && (!options?.visibility || m.visibility === options.visibility))
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (error) {
+        console.error('Supabase getMediaForTrip error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMedia
-        .filter((m) => m.trip_id === tripId && (!options?.visibility || m.visibility === options.visibility))
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return data || [];
+    } catch (err: any) {
+      console.error('getMediaForTrip exception:', err?.message);
+      return [];
     }
   }
 
@@ -162,16 +158,14 @@ export class MediaRepository {
         .order('position', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMedia
-          .filter((m) => m.day_id === dayId && (!options?.visibility || m.visibility === options.visibility))
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (error) {
+        console.error('Supabase getMediaForDay error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMedia
-        .filter((m) => m.day_id === dayId && (!options?.visibility || m.visibility === options.visibility))
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return data || [];
+    } catch (err: any) {
+      console.error('getMediaForDay exception:', err?.message);
+      return [];
     }
   }
 
@@ -198,16 +192,14 @@ export class MediaRepository {
         .order('position', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMedia
-          .filter((m) => m.place_id === placeId && (!options?.visibility || m.visibility === options.visibility))
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (error) {
+        console.error('Supabase getMediaForPlace error:', error.message);
+        return [];
       }
-      return data;
-    } catch {
-      return inMemoryMedia
-        .filter((m) => m.place_id === placeId && (!options?.visibility || m.visibility === options.visibility))
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return data || [];
+    } catch (err: any) {
+      console.error('getMediaForPlace exception:', err?.message);
+      return [];
     }
   }
 
@@ -234,16 +226,41 @@ export class MediaRepository {
         .order('position', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return inMemoryMedia
-          .filter((m) => m.memory_id === memoryId && (!options?.visibility || m.visibility === options.visibility))
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (error) {
+        console.error('Supabase getMediaForMemory error:', error.message);
+        return [];
+      }
+      return data || [];
+    } catch (err: any) {
+      console.error('getMediaForMemory exception:', err?.message);
+      return [];
+    }
+  }
+
+  /**
+   * Batch retrieves media records by a list of IDs.
+   */
+  static async getMediaByIds(ids: string[]): Promise<MediaRow[]> {
+    if (!ids || ids.length === 0) return [];
+    const cleanIds = Array.from(new Set(ids.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)));
+    if (cleanIds.length === 0) return [];
+
+    if (!isSupabaseConfigured) {
+      const idSet = new Set(cleanIds);
+      return inMemoryMedia.filter((m) => idSet.has(m.id));
+    }
+    try {
+      const { data, error } = await supabase
+        .from('media')
+        .select('*')
+        .in('id', cleanIds);
+
+      if (error || !data) {
+        return [];
       }
       return data;
     } catch {
-      return inMemoryMedia
-        .filter((m) => m.memory_id === memoryId && (!options?.visibility || m.visibility === options.visibility))
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return [];
     }
   }
 
@@ -262,11 +279,11 @@ export class MediaRepository {
         .single();
 
       if (error || !data) {
-        return inMemoryMedia.find((m) => m.id === id) || null;
+        return null;
       }
       return data;
     } catch {
-      return inMemoryMedia.find((m) => m.id === id) || null;
+      return null;
     }
   }
 

@@ -41,6 +41,7 @@ import { generateSuggestions, groupItemsByDate } from '@/lib/ingestion/suggestio
 import {
   checkExistingDuplicatesAction,
   archiveApprovedMediaBatchAction,
+  archiveSingleMediaAction,
 } from '@/server/actions/ingestion-actions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +58,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = React.useState<'GRID' | 'CHRONO' | 'TABLE'>('GRID');
   const [filterStatus, setFilterStatus] = React.useState<
-    'ALL' | 'READY' | 'NEEDS_REVIEW' | 'DUPLICATES' | 'APPROVED'
+    'ALL' | 'READY' | 'NEEDS_REVIEW' | 'DUPLICATES' | 'APPROVED' | 'FAILED'
   >('ALL');
   const [activeDetailItem, setActiveDetailItem] = React.useState<IngestionItem | null>(null);
   const [isConfirmArchiveOpen, setIsConfirmArchiveOpen] = React.useState(false);
@@ -336,42 +337,184 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
     );
   };
 
-  // Commit Archival
+  // Helper to upload and archive a single item with its binary File
+  const archiveItem = async (item: IngestionItem) => {
+    const formData = new FormData();
+    formData.append('file', item.file);
+
+    const metadata = {
+      id: item.archivedMediaId || item.id,
+      itemId: item.id,
+      filename: item.file.name,
+      mimeType: item.metadata?.mime_type || item.file.type,
+      width: item.metadata?.dimensions?.width,
+      height: item.metadata?.dimensions?.height,
+      duration: item.metadata?.duration,
+      fileSizeBytes: item.metadata?.file_size_bytes,
+      contentHash: item.metadata?.content_hash,
+      takenAt: item.metadata?.taken_at || item.metadata?.takenAt,
+      latitude: item.metadata?.gps?.latitude,
+      longitude: item.metadata?.gps?.longitude,
+      tripId: item.assigned_trip_id,
+      dayId: item.assigned_day_id,
+      placeId: item.assigned_place_id,
+      caption: item.caption,
+      altText: item.alt_text,
+      overrideDuplicate: item.duplicateStatus === 'OVERRIDE',
+    };
+
+    formData.append('metadata', JSON.stringify(metadata));
+    return await archiveSingleMediaAction(formData);
+  };
+
+  // Commit Archival with real persistent storage upload
   const handleConfirmArchive = async () => {
-    const approvedItems = items.filter((i) => i.reviewStatus === 'APPROVED');
+    const approvedItems = items.filter(
+      (i) => i.reviewStatus === 'APPROVED' && !i.archivedMediaId && i.status !== 'ARCHIVED'
+    );
     if (approvedItems.length === 0) return;
 
     setIsArchiving(true);
 
-    const batchInput: ArchiveBatchItemInput[] = approvedItems.map((item) => ({
-      filename: item.file.name,
-      storage_url: item.metadata?.preview_url,
-      thumbnail_url: item.metadata?.preview_url,
-      type: item.metadata?.type || 'IMAGE',
-      mime_type: item.metadata?.mime_type || item.file.type,
-      width: item.metadata?.dimensions?.width,
-      height: item.metadata?.dimensions?.height,
-      duration: item.metadata?.duration,
-      file_size_bytes: item.metadata?.file_size_bytes,
-      content_hash: item.metadata?.content_hash,
-      taken_at: item.metadata?.taken_at,
-      latitude: item.metadata?.gps?.latitude,
-      longitude: item.metadata?.gps?.longitude,
-      trip_id: item.assigned_trip_id,
-      day_id: item.assigned_day_id,
-      place_id: item.assigned_place_id,
-      caption: item.caption,
-      alt_text: item.alt_text,
-    }));
+    let archivedCount = 0;
+    let duplicateCount = 0;
+    let failedCount = 0;
+    const errors: { itemId?: string; filename?: string; reason: string }[] = [];
+    const itemResults: any[] = [];
+    const createdIds: string[] = [];
 
-    const result = await archiveApprovedMediaBatchAction(batchInput);
-    setArchivalResult(result);
+    for (const item of approvedItems) {
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, status: 'UPLOADING' } : i))
+      );
+
+      try {
+        const res = await archiveItem(item);
+        itemResults.push(res);
+
+        if (res.status === 'ARCHIVED') {
+          archivedCount++;
+          if (res.mediaId) createdIds.push(res.mediaId);
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id
+                ? {
+                    ...i,
+                    status: 'ARCHIVED',
+                    archivedMediaId: res.mediaId,
+                    errorMessage: undefined,
+                  }
+                : i
+            )
+          );
+        } else if (res.status === 'DUPLICATE') {
+          duplicateCount++;
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id
+                ? {
+                    ...i,
+                    status: 'NEEDS_REVIEW',
+                    duplicateStatus: 'EXACT_DUPLICATE',
+                    errorMessage: res.reason,
+                  }
+                : i
+            )
+          );
+          errors.push({ itemId: item.id, filename: item.file.name, reason: res.reason || 'Exact duplicate' });
+        } else {
+          failedCount++;
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id
+                ? {
+                    ...i,
+                    status: 'FAILED',
+                    errorMessage: res.reason,
+                  }
+                : i
+            )
+          );
+          errors.push({ itemId: item.id, filename: item.file.name, reason: res.reason || 'Archive failed' });
+        }
+      } catch (err: any) {
+        failedCount++;
+        const reason = err.message || 'Network or upload error';
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  status: 'FAILED',
+                  errorMessage: reason,
+                }
+              : i
+          )
+        );
+        errors.push({ itemId: item.id, filename: item.file.name, reason });
+      }
+    }
+
+    const batchResult: ArchiveBatchResult = {
+      success: archivedCount > 0 && failedCount === 0,
+      count: approvedItems.length,
+      total: approvedItems.length,
+      archivedCount,
+      duplicateCount,
+      failedCount,
+      createdIds,
+      items: itemResults,
+      errors,
+      error: failedCount > 0 ? `${failedCount} item(s) failed to archive` : undefined,
+    };
+
+    setArchivalResult(batchResult);
     setIsArchiving(false);
+  };
 
-    if (result.success) {
-      // Remove approved items from active queue
-      setItems((prev) => prev.filter((i) => i.reviewStatus !== 'APPROVED'));
-      setSelectedIds(new Set());
+  // Single item retry handler
+  const handleRetryItem = async (item: IngestionItem) => {
+    setItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, status: 'UPLOADING', errorMessage: undefined } : i))
+    );
+
+    try {
+      const res = await archiveItem(item);
+      setItems((prev) =>
+        prev.map((i) => {
+          if (i.id !== item.id) return i;
+          if (res.status === 'ARCHIVED') {
+            return {
+              ...i,
+              status: 'ARCHIVED',
+              archivedMediaId: res.mediaId,
+              reviewStatus: 'APPROVED',
+              errorMessage: undefined,
+            };
+          }
+          if (res.status === 'DUPLICATE') {
+            return {
+              ...i,
+              status: 'NEEDS_REVIEW',
+              duplicateStatus: 'EXACT_DUPLICATE',
+              errorMessage: res.reason,
+            };
+          }
+          return {
+            ...i,
+            status: 'FAILED',
+            errorMessage: res.reason,
+          };
+        })
+      );
+    } catch (err: any) {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id
+            ? { ...i, status: 'FAILED', errorMessage: err.message || 'Retry failed' }
+            : i
+        )
+      );
     }
   };
 
@@ -385,6 +528,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
           item.duplicateStatus === 'EXACT_DUPLICATE' || item.duplicateStatus === 'BATCH_DUPLICATE'
         );
       if (filterStatus === 'APPROVED') return item.reviewStatus === 'APPROVED';
+      if (filterStatus === 'FAILED') return item.status === 'FAILED';
       return true;
     });
   }, [items, filterStatus]);
@@ -397,8 +541,10 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
     const duplicates = items.filter(
       (i) => i.duplicateStatus === 'EXACT_DUPLICATE' || i.duplicateStatus === 'BATCH_DUPLICATE'
     ).length;
-    const approved = items.filter((i) => i.reviewStatus === 'APPROVED').length;
-    return { total, ready, needsReview, duplicates, approved };
+    const approved = items.filter((i) => i.reviewStatus === 'APPROVED' && !i.archivedMediaId).length;
+    const failed = items.filter((i) => i.status === 'FAILED').length;
+    const archived = items.filter((i) => i.status === 'ARCHIVED' || i.archivedMediaId).length;
+    return { total, ready, needsReview, duplicates, approved, failed, archived };
   }, [items]);
 
   const dateGroups = React.useMemo(() => {
@@ -774,6 +920,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                     days={days}
                     places={places}
                     onOverrideDuplicate={() => handleOverrideDuplicate(item.id)}
+                    onRetry={() => handleRetryItem(item)}
                   />
                 ))}
               </div>
@@ -803,7 +950,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                 <th className="p-3">Assigned Trip / Day</th>
                 <th className="p-3">Assigned Place</th>
                 <th className="p-3">Status</th>
-                <th className="p-3 text-right">Action</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-800/60">
@@ -811,11 +958,10 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                 const assignedTrip = trips.find((t) => t.id === item.assigned_trip_id);
                 const assignedDay = days.find((d) => d.id === item.assigned_day_id);
                 const assignedPlace = places.find((p) => p.id === item.assigned_place_id);
-
                 return (
                   <tr
                     key={item.id}
-                    className={`hover:bg-stone-900/60 transition-colors ${
+                    className={`hover:bg-stone-800/30 transition-colors ${
                       selectedIds.has(item.id) ? 'bg-amber-500/5' : ''
                     }`}
                   >
@@ -900,7 +1046,17 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                     <td className="p-3">
                       <ItemStatusBadge item={item} />
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right space-x-2">
+                      {item.status === 'FAILED' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRetryItem(item)}
+                          className="text-xs border-red-700/50 text-red-400 hover:bg-red-500/10 h-7 px-2"
+                        >
+                          Retry
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -930,6 +1086,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
               days={days}
               places={places}
               onOverrideDuplicate={() => handleOverrideDuplicate(item.id)}
+              onRetry={() => handleRetryItem(item)}
             />
           ))}
         </div>
@@ -992,22 +1149,81 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
             </div>
 
             {archivalResult && (
-              <div
-                className={`p-3 rounded-lg text-xs ${
-                  archivalResult.success
-                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                    : 'bg-red-500/10 border border-red-500/30 text-red-300'
-                }`}
-              >
-                {archivalResult.success
-                  ? `Successfully archived ${archivalResult.count} items to the database!`
-                  : `Archival failed: ${archivalResult.error}`}
+              <div className="space-y-3">
+                <div
+                  className={`p-3 rounded-lg text-xs ${
+                    archivalResult.failedCount === 0
+                      ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                      : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'
+                  }`}
+                >
+                  <div className="font-semibold mb-1 text-sm">
+                    {archivalResult.failedCount === 0
+                      ? 'Archive Complete'
+                      : 'Archive Complete (Partial Issues Detected)'}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-stone-300 mt-2">
+                    <div>
+                      Total selected:{' '}
+                      <span className="font-semibold text-white">
+                        {archivalResult.total || archivalResult.count}
+                      </span>
+                    </div>
+                    <div>
+                      Archived:{' '}
+                      <span className="font-semibold text-emerald-400">
+                        {archivalResult.archivedCount}
+                      </span>
+                    </div>
+                    <div>
+                      Duplicates:{' '}
+                      <span className="font-semibold text-amber-400">
+                        {archivalResult.duplicateCount || 0}
+                      </span>
+                    </div>
+                    <div>
+                      Failed:{' '}
+                      <span className="font-semibold text-red-400">
+                        {archivalResult.failedCount}
+                      </span>
+                    </div>
+                  </div>
+                  {archivalResult.error && (
+                    <div className="mt-2 text-red-400 font-mono text-[11px]">
+                      {archivalResult.error}
+                    </div>
+                  )}
+                </div>
+
+                {archivalResult.errors && archivalResult.errors.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto space-y-1 bg-stone-950 p-2.5 rounded border border-stone-800 text-[11px]">
+                    <div className="text-stone-400 font-medium mb-1">Issue Details:</div>
+                    {archivalResult.errors.map((err, idx) => (
+                      <div key={idx} className="text-red-400 truncate">
+                        • <span className="font-semibold text-stone-300">{err.filename}</span>:{' '}
+                        {err.reason}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
-              {archivalResult?.success ? (
+              {archivalResult ? (
                 <>
+                  {archivalResult.failedCount > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFilterStatus('FAILED');
+                        setIsConfirmArchiveOpen(false);
+                      }}
+                      className="border-red-700/60 text-red-300 hover:bg-red-500/10 text-xs"
+                    >
+                      Review Failed
+                    </Button>
+                  )}
                   <Link href="/studio/media">
                     <Button className="bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs">
                       View in Media Manager →
@@ -1021,7 +1237,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                     }}
                     className="border-stone-700 text-stone-300 text-xs"
                   >
-                    Close
+                    Done
                   </Button>
                 </>
               ) : (
@@ -1071,6 +1287,7 @@ interface MediaItemCardProps {
   days: DayRow[];
   places: PlaceRow[];
   onOverrideDuplicate: () => void;
+  onRetry?: () => void;
 }
 
 function MediaItemCard({
@@ -1082,6 +1299,7 @@ function MediaItemCard({
   days,
   places,
   onOverrideDuplicate,
+  onRetry,
 }: MediaItemCardProps) {
   const assignedTrip = trips.find((t) => t.id === item.assigned_trip_id);
   const assignedPlace = places.find((p) => p.id === item.assigned_place_id);
@@ -1096,6 +1314,8 @@ function MediaItemCard({
           ? 'border-amber-500 ring-1 ring-amber-500/50 bg-stone-900/80'
           : isDuplicate
           ? 'border-red-500/40'
+          : item.status === 'FAILED'
+          ? 'border-red-600/50'
           : 'border-stone-800 hover:border-stone-700'
       }`}
     >
@@ -1198,6 +1418,28 @@ function MediaItemCard({
           </div>
         </div>
 
+        {/* Failed Error Message & Retry Action */}
+        {item.status === 'FAILED' && (
+          <div className="pt-2 border-t border-red-900/40 space-y-1.5">
+            {item.errorMessage && (
+              <p className="text-[10px] text-red-400 line-clamp-2" title={item.errorMessage}>
+                {item.errorMessage}
+              </p>
+            )}
+            {onRetry && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetry}
+                className="w-full text-[10px] h-6 border-red-600/50 text-red-400 hover:bg-red-500/10 flex items-center justify-center gap-1"
+              >
+                <RefreshCw className="w-2.5 h-2.5" />
+                Retry
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Duplicate Override Action */}
         {isDuplicate && (
           <div className="pt-1">
@@ -1217,17 +1459,47 @@ function MediaItemCard({
 }
 
 function ItemStatusBadge({ item }: { item: IngestionItem }) {
+  if (item.status === 'UPLOADING') {
+    return (
+      <Badge className="bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] flex items-center gap-1">
+        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+        Uploading…
+      </Badge>
+    );
+  }
+  if (item.status === 'PROCESSING') {
+    return (
+      <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] flex items-center gap-1">
+        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+        Processing metadata…
+      </Badge>
+    );
+  }
+  if (item.status === 'ARCHIVED' || item.archivedMediaId) {
+    return (
+      <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px]">
+        Archived (Private Draft)
+      </Badge>
+    );
+  }
+  if (item.status === 'FAILED') {
+    return (
+      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px]">
+        Archive failed
+      </Badge>
+    );
+  }
   if (item.duplicateStatus === 'EXACT_DUPLICATE') {
     return (
       <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px]">
-        Duplicate in Archive
+        Exact duplicate
       </Badge>
     );
   }
   if (item.duplicateStatus === 'BATCH_DUPLICATE') {
     return (
       <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px]">
-        Batch Duplicate
+        Batch duplicate
       </Badge>
     );
   }
@@ -1241,12 +1513,14 @@ function ItemStatusBadge({ item }: { item: IngestionItem }) {
   if (item.reviewStatus === 'APPROVED') {
     return (
       <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px]">
-        Approved
+        Ready to archive
       </Badge>
     );
   }
   return (
-    <Badge className="bg-stone-800 text-stone-300 border border-stone-700 text-[10px]">Ready</Badge>
+    <Badge className="bg-stone-800 text-stone-300 border border-stone-700 text-[10px]">
+      Ready to archive
+    </Badge>
   );
 }
 

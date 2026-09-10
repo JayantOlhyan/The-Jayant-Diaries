@@ -1,13 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { MediaRepository } from '@/server/repositories/media-repository';
+import { MediaRepository, MediaInsert } from '@/server/repositories/media-repository';
 import { TripRepository } from '@/server/repositories/trip-repository';
 import { PlaceRepository } from '@/server/repositories/place-repository';
 import { DayRepository } from '@/server/repositories/day-repository';
 import { isValidCoordinate } from '@/lib/validation/coordinates';
 import { ArchiveBatchItemInput, ArchiveBatchResult } from '@/types/ingestion';
-import { MediaInsert } from '@/types/entities';
 
 /**
  * Checks a list of deterministic content hashes (SHA-256) against existing archive media.
@@ -40,7 +39,15 @@ export async function archiveApprovedMediaBatchAction(
   batch: ArchiveBatchItemInput[]
 ): Promise<ArchiveBatchResult> {
   if (!batch || batch.length === 0) {
-    return { success: false, count: 0, createdIds: [], error: 'Empty batch provided' };
+    return {
+      success: false,
+      count: 0,
+      archivedCount: 0,
+      failedCount: 0,
+      createdIds: [],
+      errors: [],
+      error: 'Empty batch provided',
+    };
   }
 
   try {
@@ -100,8 +107,7 @@ export async function archiveApprovedMediaBatchAction(
       const contentHash = item.contentHash || item.content_hash || null;
       const takenAt = item.takenAt || item.taken_at || null;
       const altText = item.altText || item.alt_text || null;
-      const rawType = item.type || 'PHOTO';
-      const mediaType = (rawType === 'IMAGE' ? 'PHOTO' : rawType) as any;
+      const mediaType = item.type || 'PHOTO';
 
       inserts.push({
         id: mediaId,

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import * as React from 'react';
@@ -984,7 +985,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
                 </span>
                 All {stats.approved} items will be archived with{' '}
                 <code className="bg-stone-900 text-emerald-300 px-1 py-0.5 rounded">
-                  visibility = 'PRIVATE'
+                  visibility = &apos;PRIVATE&apos;
                 </code>{' '}
                 by default. Uploading does not publish to public routes or feeds.
               </div>

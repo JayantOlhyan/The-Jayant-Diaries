@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { TripRepository } from '@/server/repositories/trip-repository';
 import { PlaceRepository } from '@/server/repositories/place-repository';
-import { MemoryRepository } from '@/server/repositories/memory-repository';
+import { StoryRepository } from '@/server/repositories/story-repository';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thejayantdiaries.com';
@@ -22,6 +22,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${baseUrl}/places`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/destinations`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
@@ -73,16 +79,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    // 4. Dynamic Public Stories (only PUBLIC memories)
-    const publicMemories = await MemoryRepository.getPublicMemories();
-    const memoryRoutes: MetadataRoute.Sitemap = publicMemories.map((memory) => ({
-      url: `${baseUrl}/stories/${memory.id}`,
-      lastModified: memory.updated_at ? new Date(memory.updated_at) : new Date(),
+    // 4. Dynamic Published Stories (only PUBLISHED & PUBLIC stories)
+    const publishedStories = await StoryRepository.getPublishedStories();
+    const storyRoutes: MetadataRoute.Sitemap = publishedStories.map((story) => ({
+      url: `${baseUrl}/stories/${story.slug}`,
+      lastModified: story.updated_at ? new Date(story.updated_at) : new Date(),
       changeFrequency: 'monthly' as const,
-      priority: 0.65,
+      priority: 0.8,
     }));
 
-    return [...staticRoutes, ...tripRoutes, ...placeRoutes, ...memoryRoutes];
+    return [...staticRoutes, ...tripRoutes, ...placeRoutes, ...storyRoutes];
   } catch (err) {
     console.error('Error generating dynamic sitemap:', err);
     return staticRoutes;

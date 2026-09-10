@@ -22,8 +22,7 @@ This document outlines the security architecture, data privacy controls, and def
 ### [IMPLEMENTED]
 - **Client & Server Auth Tooling**: Configured Supabase SSR (`@supabase/ssr`) with cookie-based session handling in `src/lib/auth/server.ts` and `src/lib/auth/client.ts`.
 - **Public vs Studio Routing Boundaries**: Route architecture clearly isolates public read-only views (`src/app/(public)/*`) from Studio administration views (`src/app/studio/*`).
-
-### [PLANNED — Phase 3]
+- **Server-Side Authorization Enforcement**: All Studio Server Actions (`trip-actions`, `day-actions`, `place-actions`, `memory-actions`, `media-actions`, `curation-actions`, `ingestion-actions`) enforce `verifyStudioAuth()` on the server. Unauthenticated invocations are rejected immediately.
 - **Studio Route Middleware Guard**: Automated redirection to `/studio/login` for unauthenticated sessions on `/studio/*` paths via `middleware.ts`.
 - **Session Expiry & Token Rotation**: Refresh token rotation handled automatically via Supabase Auth cookies.
 
@@ -93,8 +92,8 @@ CREATE POLICY "Authenticated user has full access to trips" ON trips
 ## 8. Privacy & Search Engine Directives
 
 ### [IMPLEMENTED]
-- Root layout in `src/app/layout.tsx` establishes base search engine indexing policies.
-
-### [PLANNED — Phase 4]
-- **Unlisted URLs** (`/journeys/unlisted-trip`): Injects `X-Robots-Tag: noindex, nofollow` HTTP headers and `<meta name="robots" content="noindex, nofollow">` HTML tags.
-- **Private URLs** (`/studio/*`): Excluded via `robots.txt` and response headers.
+- **Root Indexing Policy**: Root layout in `src/app/layout.tsx` establishes base search engine indexing policies.
+- **Dynamic Robots Configuration**: `src/app/robots.ts` explicitly disallows crawler access to `/studio/`, `/api/`, and `/search`.
+- **Dynamic Sitemap Generation**: `src/app/sitemap.ts` includes ONLY verified `PUBLIC` & `PUBLISHED` trips, places, and memories. Private, unlisted, and studio routes are strictly excluded.
+- **Studio Route Noindex Guard**: `src/app/studio/layout.tsx` enforces `robots: { index: false, follow: false, noarchive: true }`.
+- **Search Query Privacy**: `/search` generates metadata with `robots: { index: false, follow: true }` to prevent indexing dynamic search parameter variations.

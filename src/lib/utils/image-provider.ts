@@ -4,11 +4,9 @@
  * and provides safe fallbacks for broken or missing images.
  */
 
-export const FALLBACK_IMAGE_URL =
-  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80';
+export const FALLBACK_IMAGE_URL = '';
 
-export const FALLBACK_THUMBNAIL_URL =
-  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80';
+export const FALLBACK_THUMBNAIL_URL = '';
 
 export interface ImageFormatOptions {
   width?: number;
@@ -52,8 +50,8 @@ export function getNormalizedImageUrl(
 
     return trimmed;
   } catch {
-    // If not a valid URL, return trimmed string or fallback
-    return trimmed || FALLBACK_IMAGE_URL;
+    // If relative path like /images/... preserve it, otherwise return safe empty fallback
+    return trimmed.startsWith('/') ? trimmed : FALLBACK_IMAGE_URL;
   }
 }
 

@@ -172,9 +172,76 @@ media/
 
 ---
 
-## 9. Backup & Disaster Recovery Strategy
+## 9. Smart Archive Ingestion & Media Organization Architecture (Phase 7)
+
+Phase 7 introduces the operational ingest pipeline to transform raw travel photos and videos into organized archive records without manual data entry burden or AI hallucinations.
+
+```text
++-----------------------+
+|   Raw Media Files     |  (JPG, PNG, WEBP, HEIC, MP4, MOV)
++-----------+-----------+
+            |
+            v
++-----------------------+
+|  Deterministic Parser |  (exifr + Web Crypto API)
+|  - EXIF Timestamp     |
+|  - GPS Coordinates    |
+|  - SHA-256 Hash       |
++-----------+-----------+
+            |
+            +------------------------------------+
+            |                                    |
+            v                                    v
++-----------------------+            +-----------------------+
+| Suggestion Engine     |            |  Duplicate Detection  |
+| - Trip: Date Range    |            |  - Database Hash Match|
+| - Day: Date Match     |            |  - Intra-Batch Match  |
+| - Place: Haversine    |            |  - Non-destructive    |
+|   (Proximity <= 15km) |            +-----------+-----------+
++-----------+-----------+                        |
+            |                                    |
+            +-----------------+------------------+
+                              |
+                              v
+            +------------------------------------+
+            |      Studio Operator Review        |
+            |      /studio/import                |
+            |      - Date Grouping Timeline      |
+            |      - Bulk Assignments            |
+            |      - Technical EXIF Inspector    |
+            |      - Human Approval Gate         |
+            +-----------------+------------------+
+                              |
+                              v
+            +------------------------------------+
+            |   Server Action (Batch Archival)   |
+            |   - Referential Integrity Check    |
+            |   - Coordinate Bounds Check        |
+            |   - Default: visibility='PRIVATE'  |
+            +------------------------------------+
+```
+
+### Deterministic Principles & Invariants
+1. **Mathematical Suggestions Only**:
+   - **Trip**: Media capture date falls within `trip.start_date` and `trip.end_date`.
+   - **Day**: Media capture date matches `day.date`.
+   - **Place**: Media GPS coordinates within 15 km of known place coordinates via the Haversine formula (`calculateDistanceKm`).
+   - **Anti-Hallucination Invariant**: Filename text is strictly forbidden for inferring location or journey.
+2. **Duplicate Prevention**:
+   - Every file is fingerprinted using deterministic SHA-256 content hashing.
+   - Exact duplicates in the canonical archive or current batch are highlighted for review. Existing records are never automatically deleted or overwritten.
+3. **Strict Privacy Invariant**:
+   - All newly ingested media assets are assigned `visibility = 'PRIVATE'` by default. Uploading does not equal publishing.
+4. **Operational Efficiency**:
+   - Chronological date grouping (`groupItemsByDate`) aggregates days into manageable batches for bulk assignment.
+   - Floating batch action toolbar allows mass assignment of Trip, Day, and Place with instant verification.
+
+---
+
+## 10. Backup & Disaster Recovery Strategy
 
 Because this is a permanent lifetime archive:
 1. **Database**: Nightly automated logical backups via Supabase + point-in-time recovery (PITR). An export script (`npm run archive:export`) dumps canonical JSON schemas and journals.
 2. **Storage**: Supabase Storage buckets mirrored or synced to secondary cold storage (AWS S3 Glacier or Cloudflare R2).
 3. **Code & Configuration**: Source code hosted on GitHub; all schema definitions version-controlled in `supabase/migrations/`.
+

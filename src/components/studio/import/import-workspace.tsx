@@ -26,6 +26,8 @@ import {
   ExternalLink,
   Eye,
   SlidersHorizontal,
+  History,
+  ChevronLeft,
 } from 'lucide-react';
 import { TripRow, DayRow, PlaceRow } from '@/types/entities';
 import {
@@ -42,6 +44,8 @@ import {
   checkExistingDuplicatesAction,
   archiveApprovedMediaBatchAction,
   archiveSingleMediaAction,
+  createImportSessionAction,
+  finalizeImportSessionAction,
 } from '@/server/actions/ingestion-actions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +69,19 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
   const [isArchiving, setIsArchiving] = React.useState(false);
   const [archivalResult, setArchivalResult] = React.useState<ArchiveBatchResult | null>(null);
   const [isProcessingQueue, setIsProcessingQueue] = React.useState(false);
+
+  // Phase 11 Import Session & Context States
+  const [sessionName, setSessionName] = React.useState('');
+  const [defaultTripId, setDefaultTripId] = React.useState('');
+  const [defaultDayId, setDefaultDayId] = React.useState('');
+  const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [groupingMode, setGroupingMode] = React.useState<'NONE' | 'PLACE' | 'TYPE' | 'STATUS'>('NONE');
+  const ITEMS_PER_PAGE = 48;
+
+  const availableDefaultDays = React.useMemo(() => {
+    return defaultTripId ? days.filter((d) => d.trip_id === defaultTripId) : [];
+  }, [days, defaultTripId]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -133,8 +150,13 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
         const metadata = await extractMediaMetadata(item.file);
         const suggestions = generateSuggestions(metadata, trips, days, places);
 
-        const assigned_trip_id = suggestions.suggested_trip?.trip.id || null;
-        const assigned_day_id = suggestions.suggested_day?.day.id || null;
+        const assigned_trip_id = defaultTripId || suggestions.suggested_trip?.trip.id || null;
+        let assigned_day_id: string | null = null;
+        if (defaultTripId && defaultDayId) {
+          assigned_day_id = defaultDayId;
+        } else if (assigned_trip_id) {
+          assigned_day_id = suggestions.suggested_day?.day.id || null;
+        }
         const assigned_place_id = suggestions.suggested_place?.place.id || null;
 
         const hasNeedsReview = !(metadata.takenAt || (metadata as any).taken_at) || !assigned_trip_id;
@@ -338,7 +360,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
   };
 
   // Helper to upload and archive a single item with its binary File
-  const archiveItem = async (item: IngestionItem) => {
+  const archiveItem = async (item: IngestionItem, sessionId?: string | null) => {
     const formData = new FormData();
     formData.append('file', item.file);
 
@@ -361,13 +383,17 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
       caption: item.caption,
       altText: item.alt_text,
       overrideDuplicate: item.duplicateStatus === 'OVERRIDE',
+      sessionId: sessionId || undefined,
     };
 
+    if (sessionId) {
+      formData.append('sessionId', sessionId);
+    }
     formData.append('metadata', JSON.stringify(metadata));
     return await archiveSingleMediaAction(formData);
   };
 
-  // Commit Archival with real persistent storage upload
+  // Commit Archival with real persistent storage upload and session tracking
   const handleConfirmArchive = async () => {
     const approvedItems = items.filter(
       (i) => i.reviewStatus === 'APPROVED' && !i.archivedMediaId && i.status !== 'ARCHIVED'
@@ -375,6 +401,22 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
     if (approvedItems.length === 0) return;
 
     setIsArchiving(true);
+
+    let sessionId: string | null = null;
+    try {
+      const sessRes = await createImportSessionAction({
+        name: sessionName.trim() || `Capture ${new Date().toLocaleDateString()}`,
+        tripId: defaultTripId || null,
+        dayId: defaultDayId || null,
+        totalFiles: approvedItems.length,
+      });
+      if (sessRes.success && sessRes.session) {
+        sessionId = sessRes.session.id;
+        setActiveSessionId(sessionId);
+      }
+    } catch {
+      // Proceed without failing archival if session creation fails
+    }
 
     let archivedCount = 0;
     let duplicateCount = 0;
@@ -389,7 +431,7 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
       );
 
       try {
-        const res = await archiveItem(item);
+        const res = await archiveItem(item, sessionId);
         itemResults.push(res);
 
         if (res.status === 'ARCHIVED') {
@@ -453,6 +495,10 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
         );
         errors.push({ itemId: item.id, filename: item.file.name, reason });
       }
+    }
+
+    if (sessionId) {
+      await finalizeImportSessionAction(sessionId).catch(() => {});
     }
 
     const batchResult: ArchiveBatchResult = {
@@ -575,6 +621,16 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link href="/studio/imports">
+            <Button
+              variant="outline"
+              className="border-stone-700 text-stone-300 hover:text-white text-xs px-3 py-2 flex items-center gap-1.5"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              Import History
+            </Button>
+          </Link>
+
           <input
             type="file"
             ref={fileInputRef}
@@ -600,6 +656,67 @@ export function ImportWorkspace({ trips, days, places }: ImportWorkspaceProps) {
               Archive Approved ({stats.approved})
             </Button>
           )}
+        </div>
+      </div>
+
+      {/* Session Pre-Import Context Bar */}
+      <div className="bg-stone-900/60 border border-stone-800/80 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-300">
+              Session Context (Optional Pre-Import Defaults)
+            </span>
+          </div>
+          <span className="text-[11px] text-stone-400">
+            Files added will automatically inherit these coordinates.
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div>
+            <label className="block text-stone-400 mb-1 text-[11px]">Session Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Ladakh — Day 3"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              className="w-full bg-stone-950 border border-stone-800 rounded px-2.5 py-1.5 text-stone-200 focus:outline-none focus:border-amber-500 text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-stone-400 mb-1 text-[11px]">Default Trip Target</label>
+            <select
+              value={defaultTripId}
+              onChange={(e) => {
+                setDefaultTripId(e.target.value);
+                setDefaultDayId('');
+              }}
+              className="w-full bg-stone-950 border border-stone-800 rounded px-2.5 py-1.5 text-stone-200 focus:outline-none focus:border-amber-500 text-xs"
+            >
+              <option value="">-- No Default Trip --</option>
+              {trips.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-stone-400 mb-1 text-[11px]">Default Day Target</label>
+            <select
+              value={defaultDayId}
+              onChange={(e) => setDefaultDayId(e.target.value)}
+              disabled={!defaultTripId}
+              className="w-full bg-stone-950 border border-stone-800 rounded px-2.5 py-1.5 text-stone-200 focus:outline-none focus:border-amber-500 text-xs disabled:opacity-40"
+            >
+              <option value="">-- No Default Day --</option>
+              {availableDefaultDays.map((d) => (
+                <option key={d.id} value={d.id}>
+                  Day {d.day_number}: {d.title || d.date}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

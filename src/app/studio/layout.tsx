@@ -23,6 +23,7 @@ export default function StudioLayout({
     { label: "Memories", href: "/studio/memories" },
     { label: "Smart Ingestion", href: "/studio/import" },
     { label: "Import History", href: "/studio/imports" },
+    { label: "Personal Timeline", href: "/studio/timeline" },
     { label: "Archive Curation", href: "/studio/archive" },
     { label: "Backup & Export", href: "/studio/archive/export" },
     { label: "Media Manager", href: "/studio/media" },

@@ -46,6 +46,12 @@ export async function verifyStudioAuth(): Promise<StudioAuthResult> {
       error: 'Unauthorized: Studio session rejected by test override',
     };
   }
+  if (process.env.TEST_AUTH_OVERRIDE === 'authenticated') {
+    return {
+      authenticated: true,
+      userId: 'test-studio-admin',
+    };
+  }
 
   if (isSupabaseConfigured) {
     try {

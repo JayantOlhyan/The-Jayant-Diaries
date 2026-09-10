@@ -22,6 +22,7 @@ export default function StudioLayout({
     { label: "Places", href: "/studio/places" },
     { label: "Memories", href: "/studio/memories" },
     { label: "Smart Ingestion", href: "/studio/import" },
+    { label: "Import History", href: "/studio/imports" },
     { label: "Archive Curation", href: "/studio/archive" },
     { label: "Media Manager", href: "/studio/media" },
     { label: "Instagram", href: "/studio/instagram" },

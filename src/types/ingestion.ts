@@ -91,31 +91,51 @@ export interface BatchIngestionSummary {
   withoutGpsCount: number;
 }
 
+export type IngestionItemStatus = ImportItemState;
+export type IngestionItem = any;
+export type ExtractedMetadata = any;
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
 export interface ArchiveBatchItemInput {
-  id: string;
+  id?: string;
   filename: string;
-  fileSizeBytes: number;
-  mimeType: string;
-  type: 'PHOTO' | 'VIDEO';
-  contentHash: string;
-  width: number | null;
-  height: number | null;
-  duration: number | null;
-  takenAt: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  tripId: string | null;
-  dayId: string | null;
-  placeId: string | null;
-  caption: string | null;
-  altText: string | null;
+  fileSizeBytes?: number;
+  file_size_bytes?: number;
+  mimeType?: string;
+  mime_type?: string;
+  type?: 'PHOTO' | 'VIDEO' | 'REEL' | 'STORY' | 'AUDIO' | 'DOCUMENT';
+  contentHash?: string;
+  content_hash?: string;
+  width?: number | null;
+  height?: number | null;
+  duration?: number | null;
+  takenAt?: string | null;
+  taken_at?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  tripId?: string | null;
+  trip_id?: string | null;
+  dayId?: string | null;
+  day_id?: string | null;
+  placeId?: string | null;
+  place_id?: string | null;
+  caption?: string | null;
+  altText?: string | null;
+  alt_text?: string | null;
   storageUrl?: string;
+  storage_url?: string;
   storagePath?: string;
+  storage_path?: string;
+  thumbnailUrl?: string;
+  thumbnail_url?: string;
 }
 
 export interface ArchiveBatchResult {
   success: boolean;
+  count?: number;
   archivedCount: number;
   failedCount: number;
-  errors: { itemId: string; filename: string; reason: string }[];
+  createdIds?: string[];
+  errors: { itemId?: string; filename?: string; reason: string }[];
+  error?: string;
 }

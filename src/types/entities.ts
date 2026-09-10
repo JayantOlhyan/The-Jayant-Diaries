@@ -8,6 +8,14 @@ export type MediaRow = Database['public']['Tables']['media']['Row'];
 export type InstagramContentRow = Database['public']['Tables']['instagram_content']['Row'];
 export type TagRow = Database['public']['Tables']['tags']['Row'];
 export type StoryRow = Database['public']['Tables']['stories']['Row'];
+export type ImportSessionRow = Database['public']['Tables']['import_sessions']['Row'];
+export type ImportSessionItemRow = Database['public']['Tables']['import_session_items']['Row'];
+
+export interface ImportSessionWithDetails extends ImportSessionRow {
+  trip?: TripRow | null;
+  day?: DayRow | null;
+  items?: ImportSessionItemRow[];
+}
 
 export interface TripWithDetails extends TripRow {
   cover_media?: MediaRow | null;

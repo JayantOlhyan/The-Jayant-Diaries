@@ -19,6 +19,20 @@ export class MediaRepository {
   }
 
   /**
+   * Directly set in-memory media store (useful for testing custom datasets and empty archives).
+   */
+  static _setInMemoryMedia(media: MediaRow[]): void {
+    inMemoryMedia = [...media];
+  }
+
+  /**
+   * Access in-memory media store (useful for test isolation and fallback curation queries).
+   */
+  static _getInMemoryMedia(): MediaRow[] {
+    return inMemoryMedia;
+  }
+
+  /**
    * Test hook to simulate database insertion failure for failure-safety testing.
    */
   static _setSimulateInsertFailure(simulate: boolean): void {
@@ -421,6 +435,7 @@ export class MediaRepository {
         alt_text,
         position,
         visibility,
+        curation_status: 'CURATED',
         created_at: now,
         updated_at: now,
       };
@@ -449,6 +464,7 @@ export class MediaRepository {
         alt_text,
         position,
         visibility,
+        curation_status: 'CURATED',
         created_at: now,
         updated_at: now,
       };
@@ -478,6 +494,7 @@ export class MediaRepository {
         alt_text,
         position,
         visibility,
+        curation_status: 'CURATED',
         created_at: now,
         updated_at: now,
       };
@@ -609,6 +626,7 @@ export class MediaRepository {
         alt_text: insert.alt_text || null,
         position,
         visibility: insert.visibility || 'PRIVATE',
+        curation_status: insert.curation_status || 'IMPORTED',
         created_at: now,
         updated_at: now,
       };

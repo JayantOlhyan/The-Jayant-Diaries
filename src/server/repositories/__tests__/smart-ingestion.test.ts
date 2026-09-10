@@ -65,7 +65,8 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         day_number: 1,
         date: '2026-06-10',
         title: 'Arrival in Leh',
-        notes: null,
+        description: null,
+        journal: null,
         cover_media_id: null,
         created_at: '2026-06-01T00:00:00Z',
         updated_at: '2026-06-01T00:00:00Z',
@@ -76,7 +77,8 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         day_number: 2,
         date: '2026-06-11',
         title: 'Acclimatization',
-        notes: null,
+        description: null,
+        journal: null,
         cover_media_id: null,
         created_at: '2026-06-01T00:00:00Z',
         updated_at: '2026-06-01T00:00:00Z',
@@ -89,15 +91,12 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         slug: 'leh-market',
         name: 'Leh Main Bazaar',
         country: 'India',
-        region: 'Ladakh',
+        state: 'Ladakh',
+        city: 'Leh',
         latitude: 34.1642,
         longitude: 77.5848,
-        elevation: 3500,
-        place_type: 'market',
         description: null,
         cover_media_id: null,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
         created_at: '2026-06-01T00:00:00Z',
         updated_at: '2026-06-01T00:00:00Z',
       },
@@ -106,15 +105,12 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         slug: 'pangong-lake',
         name: 'Pangong Tso',
         country: 'India',
-        region: 'Ladakh',
+        state: 'Ladakh',
+        city: null,
         latitude: 33.7595,
         longitude: 78.6674,
-        elevation: 4350,
-        place_type: 'lake',
         description: null,
         cover_media_id: null,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
         created_at: '2026-06-01T00:00:00Z',
         updated_at: '2026-06-01T00:00:00Z',
       },
@@ -309,7 +305,7 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         {
           filename: 'new_shot_01.jpg',
           storage_url: '/uploads/new_shot_01.jpg',
-          type: 'IMAGE' as const,
+          type: 'PHOTO' as const,
           mime_type: 'image/jpeg',
           width: 4000,
           height: 3000,
@@ -328,7 +324,7 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
       expect(result.count).toBe(1);
 
       // Verify created media row in repository
-      const createdId = result.createdIds[0];
+      const createdId = result.createdIds?.[0] || '';
       const media = await MediaRepository.getMediaById(createdId);
       expect(media).not.toBeNull();
       expect(media?.filename).toBe('new_shot_01.jpg');
@@ -342,7 +338,7 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         {
           filename: 'invalid_gps.jpg',
           storage_url: '/uploads/invalid_gps.jpg',
-          type: 'IMAGE' as const,
+          type: 'PHOTO' as const,
           mime_type: 'image/jpeg',
           latitude: 999, // Out of bounds
           longitude: 77.5771,
@@ -359,7 +355,7 @@ describe('Phase 7: Smart Archive Ingestion & Media Organization', () => {
         {
           filename: 'fake_trip.jpg',
           storage_url: '/uploads/fake_trip.jpg',
-          type: 'IMAGE' as const,
+          type: 'PHOTO' as const,
           mime_type: 'image/jpeg',
           trip_id: 'non-existent-trip-999999',
         },

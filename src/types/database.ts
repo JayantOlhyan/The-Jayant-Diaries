@@ -10,6 +10,7 @@ export type VisibilityType = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
 export type TripStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export type MediaType = 'PHOTO' | 'VIDEO' | 'REEL' | 'STORY' | 'AUDIO' | 'DOCUMENT';
 export type InstagramType = 'POST' | 'REEL' | 'CAROUSEL';
+export type CurationStatus = 'IMPORTED' | 'REVIEW_REQUIRED' | 'CURATED' | 'ARCHIVED';
 
 export interface Database {
   public: {
@@ -209,6 +210,7 @@ export interface Database {
           alt_text: string | null;
           position: number;
           visibility: VisibilityType;
+          curation_status: CurationStatus;
           created_at: string;
           updated_at: string;
         };
@@ -236,6 +238,7 @@ export interface Database {
           alt_text?: string | null;
           position?: number;
           visibility?: VisibilityType;
+          curation_status?: CurationStatus;
           created_at?: string;
           updated_at?: string;
         };
@@ -263,6 +266,7 @@ export interface Database {
           alt_text?: string | null;
           position?: number;
           visibility?: VisibilityType;
+          curation_status?: CurationStatus;
           created_at?: string;
           updated_at?: string;
         };

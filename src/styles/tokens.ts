@@ -34,9 +34,9 @@ export const tokens = {
   },
   typography: {
     fontFamilies: {
-      serif: 'Playfair Display, Georgia, serif',
-      sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      mono: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      serif: 'Playfair Display, Cinzel, Charter, Georgia, Cambria, serif',
+      sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+      mono: 'JetBrains Mono, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     },
     fontSizes: {
       hero: "3.5rem", // 56px
@@ -46,6 +46,21 @@ export const tokens = {
       body: "1rem", // 16px
       small: "0.875rem", // 14px
       caption: "0.75rem", // 12px
+    },
+    lineHeights: {
+      tight: 1.15,
+      snug: 1.35,
+      normal: 1.5,
+      relaxed: 1.7,
+      loose: 1.9,
+    },
+    letterSpacing: {
+      tight: "-0.02em",
+      normal: "0em",
+      wide: "0.05em",
+      editorial: "0.08em",
+      cinematic: "0.2em",
+      badge: "0.25em",
     },
   },
   spacing: {

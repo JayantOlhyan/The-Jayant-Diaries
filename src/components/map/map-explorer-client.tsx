@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { PublicMapPlace } from '@/types/entities';
 import { ImageFrame } from '@/components/ui/image-frame';
+import { MapLegend } from './map-legend';
 
 // Dynamically load Leaflet Map Canvas with SSR disabled
 const MapCanvas = dynamic(() => import('./map-canvas'), {
@@ -108,6 +109,12 @@ export function MapExplorerClient({
     if (!selectedPlaceId) return null;
     return initialPlaces.find((p) => p.id === selectedPlaceId) || null;
   }, [selectedPlaceId, initialPlaces]);
+
+  // Active journey object
+  const activeJourney = useMemo(() => {
+    if (!selectedJourneySlug) return null;
+    return availableJourneys.find((j) => j.slug === selectedJourneySlug) || null;
+  }, [selectedJourneySlug, availableJourneys]);
 
   // Handle journey filter change with shallow router replace
   const handleJourneyChange = useCallback(
@@ -215,6 +222,14 @@ export function MapExplorerClient({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 2b. Cartographic Map Legend */}
+      <div className="absolute bottom-6 right-6 z-20 hidden sm:block max-w-xs">
+        <MapLegend
+          totalPlaces={visiblePlaces.length}
+          activeJourneyTitle={activeJourney?.title}
+        />
       </div>
 
       {/* 3. Empty States Overlay */}

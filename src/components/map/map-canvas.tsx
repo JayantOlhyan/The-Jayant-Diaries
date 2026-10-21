@@ -116,6 +116,16 @@ export default function MapCanvas({
         title: place.name,
       });
 
+      marker.bindTooltip(
+        `<div style="font-family: var(--font-sans, -apple-system, sans-serif); font-size: 11px; font-weight: 500; color: #F3F4F6; background: rgba(18, 21, 24, 0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 4px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); backdrop-filter: blur(8px); white-space: nowrap;">${place.name}</div>`,
+        {
+          direction: 'top',
+          offset: [0, -10],
+          opacity: 1,
+          className: 'atlas-custom-tooltip',
+        }
+      );
+
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         onSelectPlaceRef.current(place.id);

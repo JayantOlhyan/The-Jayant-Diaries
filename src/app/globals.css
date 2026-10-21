@@ -65,3 +65,14 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #384150;
 }
+
+/* Leaflet dark cartography tooltip overrides */
+.atlas-custom-tooltip.leaflet-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.atlas-custom-tooltip.leaflet-tooltip:before {
+  display: none !important;
+}

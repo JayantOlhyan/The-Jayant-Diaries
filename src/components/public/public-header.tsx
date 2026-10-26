@@ -107,8 +107,8 @@ export function PublicHeader() {
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('open-search'))}
               className="flex items-center gap-1.5 p-2 text-neutral-400 hover:text-white transition-colors rounded-lg hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-              title="Search the archive (⌘K)"
-              aria-label="Search archive"
+              title="Search the archive (⌘K or Ctrl+K)"
+              aria-label="Search the archive (Press ⌘K or Ctrl+K)"
             >
               <Search className="w-4 h-4" />
               <span className="hidden lg:inline-flex items-center text-[10px] font-mono text-neutral-400 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">
@@ -116,9 +116,20 @@ export function PublicHeader() {
               </span>
             </button>
 
+            <a
+              href="https://github.com/JayantOlhyan/The-Jayant-Diaries"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/[0.04] hidden sm:block"
+              title="Open Source Repository on GitHub"
+              aria-label="GitHub Repository"
+            >
+              <Github className="w-4 h-4" />
+            </a>
+
             <Link
               href="/studio"
-              className="text-[11px] font-mono uppercase tracking-widest text-neutral-500 hover:text-amber-400 transition-colors hidden sm:block"
+              className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 hover:text-amber-400 transition-colors hidden sm:block border border-white/10 hover:border-amber-500/30 px-2.5 py-1 rounded-md"
             >
               Studio
             </Link>

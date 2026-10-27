@@ -153,10 +153,16 @@ export function PublicFooter() {
           </div>
         </div>
 
-        {/* Bottom Copyright */}
-        <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-[11px] font-mono text-neutral-600 gap-2">
-          <span>&copy; {new Date().getFullYear()} The Jayant Diaries. All rights reserved.</span>
-          <span>Places change. Memories stay.</span>
+        {/* Bottom Copyright & Open Source Details */}
+        <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-[11px] font-mono text-neutral-500 gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>&copy; {new Date().getFullYear()} The Jayant Diaries.</span>
+            <span>&bull;</span>
+            <span className="text-neutral-400">Open source under MIT License</span>
+          </div>
+          <div className="flex items-center gap-2 text-neutral-400">
+            <span>Places change. Memories stay.</span>
+          </div>
         </div>
       </div>
     </footer>

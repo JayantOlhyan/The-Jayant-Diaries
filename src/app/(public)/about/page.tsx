@@ -85,9 +85,9 @@ export default function AboutPage() {
 
             <div className="rounded-lg border border-cinema-border/60 bg-cinema-card/30 p-6 space-y-3">
               <span className="font-serif text-2xl text-cinema-accent">III.</span>
-              <h3 className="font-serif text-lg text-white">Cinematic Respect</h3>
+              <h3 className="font-serif text-lg text-white">Open Architecture</h3>
               <p className="text-xs text-cinema-muted leading-relaxed">
-                A dark, quiet, editorial aesthetic. High-fidelity visual presentation that lets the grandeur of the landscapes and quiet human moments breathe.
+                A dark, quiet, editorial aesthetic. Fully open-sourced under the MIT license so anyone can self-host and preserve their own life expeditions.
               </p>
             </div>
           </div>

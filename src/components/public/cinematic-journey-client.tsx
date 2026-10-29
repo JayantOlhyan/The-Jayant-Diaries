@@ -16,6 +16,7 @@ import {
   Compass,
   ArrowRight,
   Maximize2,
+  X,
 } from 'lucide-react';
 import { CinematicJourney, MediaRow } from '@/types/entities';
 import { ImageLightbox } from '@/components/media/image-lightbox';
@@ -138,17 +139,19 @@ export function CinematicJourneyClient({ journey, stories = [] }: CinematicJourn
               <button
                 key={day.id}
                 onClick={() => scrollToSection(`day-${day.day_number}`)}
+                aria-label={`Jump to Day ${day.day_number}${day.places[0]?.name ? `: ${day.places[0].name}` : ''}`}
                 className={`px-2.5 py-1 rounded-full transition-colors whitespace-nowrap ${
                   activeChapter === `day-${day.day_number}`
                     ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
-                0{day.day_number} {day.places[0]?.name ? `· ${day.places[0].name}` : ''}
+                {String(day.day_number).padStart(2, '0')} {day.places[0]?.name ? `· ${day.places[0].name}` : ''}
               </button>
             ))}
             <button
               onClick={() => scrollToSection('reflection')}
+              aria-label="Jump to Reflection"
               className={`px-2.5 py-1 rounded-full transition-colors ${
                 activeChapter === 'reflection'
                   ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
@@ -170,7 +173,7 @@ export function CinematicJourneyClient({ journey, stories = [] }: CinematicJourn
               title="Close Cinematic Mode"
               aria-label="Close Cinematic Mode"
             >
-              <span className="text-sm font-mono leading-none">&times;</span>
+              <X className="w-4 h-4" />
             </Link>
           </div>
         </div>

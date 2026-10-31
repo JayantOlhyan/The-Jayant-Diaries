@@ -17,12 +17,13 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div
+      role="alert"
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border border-red-900/40 bg-red-950/20 p-8 text-center",
+        "flex flex-col items-center justify-center rounded-2xl border border-red-900/40 bg-red-950/20 p-8 text-center backdrop-blur-sm",
         className
       )}
     >
-      <div className="mb-3 rounded-full bg-red-900/30 p-2.5 text-red-400">
+      <div className="mb-3 rounded-full bg-red-900/30 p-2.5 text-red-400 border border-red-800/40">
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -32,10 +33,10 @@ export function ErrorState({
           />
         </svg>
       </div>
-      <h3 className="text-sm font-semibold text-red-200">{title}</h3>
-      <p className="mt-1 max-w-sm text-xs text-red-300/80">{message}</p>
+      <h3 className="font-serif text-base font-semibold text-red-200 tracking-wide">{title}</h3>
+      <p className="mt-1.5 max-w-sm font-sans text-xs text-red-300/80 leading-relaxed font-light">{message}</p>
       {onRetry && (
-        <div className="mt-4">
+        <div className="mt-5">
           <Button variant="secondary" size="sm" onClick={onRetry}>
             Try Again
           </Button>

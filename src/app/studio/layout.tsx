@@ -77,6 +77,11 @@ export default function StudioLayout({
               Studio Operational
             </span>
           </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-flex items-center text-[10px] font-mono text-studio-muted bg-studio-elevated border border-studio-border px-2 py-0.5 rounded">
+              Privacy Guard: Zero Leakage Enforced
+            </span>
+          </div>
         </header>
 
         <main className="flex-1 p-8 overflow-y-auto">{children}</main>

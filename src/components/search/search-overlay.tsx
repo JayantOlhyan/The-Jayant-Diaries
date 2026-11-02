@@ -147,7 +147,7 @@ export function SearchOverlay() {
 
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-flex items-center text-[10px] font-mono text-neutral-400 bg-white/[0.05] border border-white/10 px-2 py-1 rounded">
-              ⌘K to search
+              ⌘K to open · Esc to close
             </span>
             <button
               type="button"
@@ -169,7 +169,7 @@ export function SearchOverlay() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search the archive..."
+              placeholder="Search journeys, mountain passes, memories, and field notes..."
               className="w-full pl-12 pr-10 py-3 bg-white/[0.04] border border-white/10 rounded-xl text-white placeholder-neutral-500 font-sans text-sm sm:text-base focus:outline-none focus:border-amber-500/80 focus:bg-white/[0.06] transition-all"
             />
             {query && (

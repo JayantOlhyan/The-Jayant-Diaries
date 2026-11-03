@@ -21,7 +21,7 @@ export default async function PublicStoriesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <span className="text-[11px] font-semibold tracking-[0.25em] text-cinema-accent uppercase">
+              <span className="font-mono text-[11px] font-semibold tracking-[0.25em] text-cinema-accent uppercase">
                 Travel Documentaries & Reflections
               </span>
               <h1 className="mt-2 font-serif text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white">
@@ -60,7 +60,7 @@ export default async function PublicStoriesPage() {
               <section className="space-y-6">
                 <div className="flex items-center gap-3">
                   <span className="h-px w-6 bg-cinema-accent" />
-                  <span className="text-[11px] font-semibold tracking-[0.2em] text-cinema-accent uppercase">
+                  <span className="font-mono text-[11px] font-semibold tracking-[0.2em] text-cinema-accent uppercase">
                     Featured Story
                   </span>
                 </div>

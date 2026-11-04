@@ -1,7 +1,7 @@
 {
   "name": "the-jayant-diaries",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
   "description": "Personal digital travel archive transforming scattered photos, journals, places and memories into cinematic journeys.",
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "validate": "npm run typecheck && npm run lint && npm run test",
+    "clean": "rm -rf .next tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

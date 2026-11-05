@@ -78,33 +78,55 @@ npm run lint
 # Run unit & integration tests
 npm run test
 
+# Full validation (typecheck, lint, test)
+npm run validate
+
 # Production build verification
 npm run build
 ```
 
 ---
 
-## 5. Repository Structure
+## 5. Recent Enhancements & Open Source Release
+
+The archive has been upgraded with comprehensive enhancements for open-source publication and enhanced cartographic experience:
+
+- 🗺️ **Cartographic Map Legend**: Added an interactive, accessible, collapsible legend (`MapLegend`) to the geographic atlas explaining waypoint pins, expedition tracks, cluster counts, and keyboard shortcuts (`Esc`).
+- ✍️ **Typography & Tokens Overhaul**: Refined editorial serif, sans-serif, and monospace font stacks with fluid scaling, letter-spacing, and line heights.
+- 📍 **Cartographic Canvas Polish**: Integrated dark-matter hover tooltips and precision coordinate displays (`N/S`, `E/W`).
+- 🌐 **Open Source Community Architecture**:
+  - Full **MIT License** (`LICENSE`) and **Contributor Covenant v2.1** (`CODE_OF_CONDUCT.md`).
+  - Standardized **Contributing Guidelines** (`CONTRIBUTING.md`) and GitHub Issue/PR Templates.
+  - Step-by-step **Self-Hosting Guide** (`docs/SELF_HOSTING.md`) for independent personal deployment.
+  - Responsible disclosure policy (`SECURITY.md`).
+- 🔍 **Editorial Microcopy & Accessibility**: Enriched search overlay modal prompts (`⌘K`), public header/footer metadata, and resilient empty/error state layouts.
+
+---
+
+## 6. Repository Structure
 
 ```text
 The-Jayant-Diaries/
 ├── AGENTS.md                 # Operating contract for AI coding assistants
+├── LICENSE                   # Open source MIT License
+├── CONTRIBUTING.md           # Community contributing guidelines
+├── CODE_OF_CONDUCT.md        # Contributor Covenant Code of Conduct
+├── SECURITY.md               # Vulnerability reporting & privacy policy
 ├── README.md                 # Project introduction and quick start
 ├── docs/                     # Canonical engineering documentation
 │   ├── PRD.md                # Master Product Requirements Document
 │   ├── ARCHITECTURE.md       # Architecture blueprint and design decisions
 │   ├── DATA_MODEL.md         # Database schema, ER diagram, relationships
 │   ├── SECURITY.md           # Threat model, RLS, auth, and data privacy
+│   ├── SELF_HOSTING.md       # Self-hosting and configuration guide
 │   ├── DEVELOPMENT.md        # Local development workflows and commands
-│   ├── DEPLOYMENT.md         # Vercel & Supabase production deployment
-│   ├── CONTRIBUTING.md       # Branching, commits, and PR standards
+│   ├── DEPLOYMENT.md         # Production deployment guide
 │   └── STAGE-0-CHECKLIST.md  # Acceptance verification checklist
 ├── supabase/
 │   └── migrations/           # Versioned PostgreSQL migration files
 ├── src/
 │   ├── app/                  # Next.js App Router (Public, Studio, API)
-│   ├── components/           # UI components (ui, public, studio, media)
-│   ├── features/             # Feature domain modules
+│   ├── components/           # UI components (map, ui, public, studio, media)
 │   ├── lib/                  # Shared utilities (auth, db, storage, maps)
 │   ├── server/               # Repositories and server-side services
 │   ├── types/                # Database and domain TypeScript types
@@ -113,7 +135,7 @@ The-Jayant-Diaries/
 
 ---
 
-## 6. Engineering Documentation
+## 7. Engineering Documentation
 
 For deep technical details, refer to the documentation in `docs/`:
 
@@ -121,7 +143,7 @@ For deep technical details, refer to the documentation in `docs/`:
 - 🏗️ [Architecture Blueprint](docs/ARCHITECTURE.md)
 - 🗄️ [Data Model & ER Diagram](docs/DATA_MODEL.md)
 - 🔒 [Security & Privacy](docs/SECURITY.md)
+- 🚀 [Self-Hosting Guide](docs/SELF_HOSTING.md)
 - 💻 [Development Guide](docs/DEVELOPMENT.md)
-- 🚀 [Deployment Runbook](docs/DEPLOYMENT.md)
-- 🤝 [Contributing Guidelines](docs/CONTRIBUTING.md)
-- ✅ [Stage 0 Checklist](docs/STAGE-0-CHECKLIST.md)
+- 🤝 [Contributing Guidelines](CONTRIBUTING.md)
+- ⚖️ [MIT License](LICENSE)
